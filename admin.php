@@ -75,11 +75,33 @@ if ($id == "login" || substr($url, -1) == "p") {
     $pass = $_POST['pass'];
     if ($user == $useradm && $pass == decrypt($passadm)) {
       $_SESSION["mikhmon"] = $user;
-
-        echo "<script>window.location='./admin.php?id=sessions'</script>";
-    
+      $_SESSION["owner_id"] = 0; // Master Admin
+      echo "<script>window.location='./admin.php?id=sessions'</script>";
     } else {
-      $error = '<div style="width: 100%; padding:5px 0px 5px 0px; border-radius:5px;" class="bg-danger"><i class="fa fa-ban"></i> Alert!<br>Invalid username or password.</div>';
+      // Check in owners database table
+      try {
+          if (!function_exists('getDBConnection')) {
+              require_once(__DIR__ . '/include/db_config.php');
+          }
+          $db = getDBConnection();
+          $stmt = $db->prepare("SELECT * FROM owners WHERE username = :user OR email = :user OR phone = :user");
+          $stmt->execute([':user' => $user]);
+          $owner = $stmt->fetch();
+          if ($owner && password_verify($pass, $owner['password'])) {
+              if ($owner['status'] !== 'active') {
+                  $error = '<div style="width: 100%; padding:5px 0px 5px 0px; border-radius:5px;" class="bg-danger"><i class="fa fa-ban"></i> Alert!<br>Akun Owner belum aktif. Silakan selesaikan pembayaran.</div>';
+              } else {
+                  $_SESSION["mikhmon"] = $owner['username'];
+                  $_SESSION["owner_id"] = $owner['id'];
+                  $_SESSION["owner_level"] = $owner['level'];
+                  echo "<script>window.location='./admin.php?id=sessions'</script>";
+              }
+          } else {
+              $error = '<div style="width: 100%; padding:5px 0px 5px 0px; border-radius:5px;" class="bg-danger"><i class="fa fa-ban"></i> Alert!<br>Invalid username or password.</div>';
+          }
+      } catch (Exception $e) {
+          $error = '<div style="width: 100%; padding:5px 0px 5px 0px; border-radius:5px;" class="bg-danger"><i class="fa fa-ban"></i> Alert!<br>Error connecting to database.</div>';
+      }
     }
   }
   
@@ -144,15 +166,26 @@ if ($id == "login" || substr($url, -1) == "p") {
   include_once('./process/shutdown.php');
 } elseif ($id == "remove-session" && $session != "") {
   include_once('./include/menu.php');
-  $fc = file("./include/config.php" );
-  $f = fopen("./include/config.php", "w");
-  $q = "'";
-  $rem = '$data['.$q.$session.$q.']';
-  foreach ($fc as $line) {
-    if (!strstr($line, $rem))
-      fputs($f, $line);
+  if (isset($_SESSION['owner_id']) && $_SESSION['owner_id'] > 0) {
+    try {
+        if (!function_exists('getDBConnection')) {
+            require_once(__DIR__ . '/include/db_config.php');
+        }
+        $db = getDBConnection();
+        $stmt = $db->prepare("DELETE FROM router_sessions WHERE owner_id = ? AND session_name = ?");
+        $stmt->execute([$_SESSION['owner_id'], $session]);
+    } catch (Exception $e) {}
+  } else {
+    $fc = file("./include/config.php" );
+    $f = fopen("./include/config.php", "w");
+    $q = "'";
+    $rem = '$data['.$q.$session.$q.']';
+    foreach ($fc as $line) {
+      if (!strstr($line, $rem))
+        fputs($f, $line);
+    }
+    fclose($f);
   }
-  fclose($f);
   echo "<script>window.location='./admin.php?id=sessions'</script>";
 } elseif ($id == "about") {
   include_once('./include/menu.php');

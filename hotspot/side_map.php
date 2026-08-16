@@ -19,14 +19,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $capacity = $_POST['capacity'] ?? '1:8';
     
     try {
-        $stmt = $conn->prepare("INSERT INTO network_nodes (node_name, node_type, latitude, longitude, capacity, used_ports) 
-                               VALUES (:name, :type, :lat, :lng, :capacity, 0)");
+        $ownerId = $_SESSION['owner_id'] ?? 0;
+        $stmt = $conn->prepare("INSERT INTO network_nodes (node_name, node_type, latitude, longitude, capacity, used_ports, owner_id) 
+                               VALUES (:name, :type, :lat, :lng, :capacity, 0, :owner_id)");
         $stmt->execute([
             ':name' => $name,
             ':type' => $type,
             ':lat' => $lat,
             ':lng' => $lng,
-            ':capacity' => $capacity
+            ':capacity' => $capacity,
+            ':owner_id' => $ownerId
         ]);
         $message = "Node $name berhasil ditambahkan ke peta!";
     } catch (Exception $e) {
@@ -37,7 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Fetch OLT & ODP nodes from database
 $nodes = [];
 try {
-    $stmt = $conn->query("SELECT * FROM network_nodes");
+    $ownerId = $_SESSION['owner_id'] ?? 0;
+    $stmt = $conn->prepare("SELECT * FROM network_nodes WHERE owner_id = ?");
+    $stmt->execute([$ownerId]);
     $nodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     // Fail silently
@@ -46,7 +50,9 @@ try {
 // Fetch customers coordinates
 $customers = [];
 try {
-    $stmt = $conn->query("SELECT name, latitude, longitude FROM billing_customers WHERE latitude IS NOT NULL AND longitude IS NOT NULL");
+    $ownerId = $_SESSION['owner_id'] ?? 0;
+    $stmt = $conn->prepare("SELECT name, latitude, longitude FROM billing_customers WHERE owner_id = ? AND latitude IS NOT NULL AND longitude IS NOT NULL");
+    $stmt->execute([$ownerId]);
     $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     // Fail silently

@@ -1066,6 +1066,34 @@ if (file_exists($goldSqlFile)) {
 }
 
 /**
+ * 5c. Tambahan Fitur SaaS Multi-Owner
+ */
+logMessage('--- Memastikan struktur SaaS Multi-Owner ---');
+$ownersSqlFile = __DIR__ . '/database/create_owners_tables.sql';
+if (file_exists($ownersSqlFile)) {
+    $sql = file_get_contents($ownersSqlFile);
+    $statements = explode(';', $sql);
+    foreach ($statements as $statement) {
+        $statement = trim($statement);
+        if (!empty($statement)) {
+            try {
+                $pdo->exec($statement);
+            } catch (PDOException $e) {
+                // Ignore
+            }
+        }
+    }
+}
+
+// Tambahkan kolom owner_id pada tabel-tabel terkait untuk partisi data multi-tenant
+ensureColumn($pdo, 'agents', 'owner_id', 'INT DEFAULT NULL', 'id');
+ensureColumn($pdo, 'billing_customers', 'owner_id', 'INT DEFAULT NULL', 'id');
+ensureColumn($pdo, 'support_tickets', 'owner_id', 'INT DEFAULT NULL', 'id');
+ensureColumn($pdo, 'inventory_items', 'owner_id', 'INT DEFAULT NULL', 'id');
+ensureColumn($pdo, 'network_nodes', 'owner_id', 'INT DEFAULT NULL', 'id');
+logMessage('Kolom owner_id dipastikan ada pada semua tabel partisi', 'ok');
+
+/**
  * 6. Global Collation Fix (Obat Kuat)
  * Pastikan semua tabel (termasuk yang sudah ada sebelumnya) menggunakan utf8mb4_unicode_ci
  */

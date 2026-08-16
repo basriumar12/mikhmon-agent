@@ -21,14 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $warehouse = $_POST['warehouse'] ?? 'Gudang Utama';
         
         try {
-            $stmt = $conn->prepare("INSERT INTO inventory_items (item_code, item_name, category, total_stock, unit, warehouse) VALUES (:code, :name, :category, :total, :unit, :warehouse)");
+            $ownerId = $_SESSION['owner_id'] ?? 0;
+            $stmt = $conn->prepare("INSERT INTO inventory_items (item_code, item_name, category, total_stock, unit, warehouse, owner_id) VALUES (:code, :name, :category, :total, :unit, :warehouse, :owner_id)");
             $stmt->execute([
                 ':code' => $code,
                 ':name' => $name,
                 ':category' => $category,
                 ':total' => $total,
                 ':unit' => $unit,
-                ':warehouse' => $warehouse
+                ':warehouse' => $warehouse,
+                ':owner_id' => $ownerId
             ]);
             $message = "Barang $name berhasil ditambahkan!";
         } catch (Exception $e) {
@@ -68,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch all inventory items
 $items = [];
 try {
-    $stmt = $conn->query("SELECT *, (total_stock - used_stock) AS available_stock FROM inventory_items ORDER BY id DESC");
+    $ownerId = $_SESSION['owner_id'] ?? 0;
+    $stmt = $conn->prepare("SELECT *, (total_stock - used_stock) AS available_stock FROM inventory_items WHERE owner_id = ? ORDER BY id DESC");
+    $stmt->execute([$ownerId]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $error = "Gagal memuat inventory: " . $e->getMessage();

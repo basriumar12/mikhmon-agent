@@ -9,7 +9,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 include_once(__DIR__ . '/../include/db_config.php');
-include_once(__DIR__ . '/../lib/Agent.class.php');
+include_once(__DIR__ . '/../lib/Owner.class.php');
 
 $error = '';
 $success = '';
@@ -26,45 +26,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($name) || empty($phone) || empty($password)) {
         $error = 'Nama Lengkap, Nomor WhatsApp, dan Password wajib diisi!';
     } else {
-        $agent = new Agent();
+        $ownerObj = new Owner();
         
-        // Check if phone already registered
-        $existing = $agent->getAgentByPhone($phone);
+        // Check if phone/email already registered
+        $existing = $ownerObj->getOwnerByIdentifier($phone);
+        if (!$existing && !empty($email)) {
+            $existing = $ownerObj->getOwnerByIdentifier($email);
+        }
+        
         if ($existing) {
-            $error = 'Nomor WhatsApp ini sudah terdaftar!';
+            $error = 'Nomor WhatsApp atau Email ini sudah terdaftar!';
         } else {
-            $agentCode = $agent->generateAgentCode();
+            // Generate clean username from name
+            $usernameBase = preg_replace('/[^a-zA-Z0-9]/', '', strtolower($name));
+            if (empty($usernameBase)) {
+                $usernameBase = 'owner';
+            }
+            $username = $usernameBase;
             
-            // Tentukan status awal berdasarkan paket
-            // Paket bronze (free) -> active. Paket berbayar -> inactive (harus bayar dulu)
+            // Ensure unique username
+            $db = getDBConnection();
+            $stmt = $db->prepare("SELECT COUNT(*) FROM owners WHERE username = ?");
+            $stmt->execute([$username]);
+            $count = (int)$stmt->fetchColumn();
+            if ($count > 0) {
+                $username = $usernameBase . rand(100, 999);
+            }
+            
+            // Paid plans are pending ('inactive') until paid
             $status = ($level === 'bronze') ? 'active' : 'inactive';
             
             $data = [
-                'agent_code' => $agentCode,
-                'agent_name' => $name,
+                'username' => $username,
+                'agent_name' => $name, // Used for display
                 'phone' => $phone,
                 'email' => $email,
                 'password' => $password,
-                'balance' => 0.00,
                 'status' => $status,
-                'level' => $level,
-                'created_by' => 'SaaS Self Registration',
-                'notes' => 'Pendaftaran Mandiri SaaS'
+                'level' => $level
             ];
             
-            $result = $agent->createAgent($data);
+            $result = $ownerObj->createOwner($data);
             if ($result['success']) {
-                $agentId = $result['agent_id'] ?? null;
-                if (!$agentId) {
-                    // Coba cari ID dari phone jika agent_id tidak dikembalikan
-                    $newAgent = $agent->getAgentByPhone($phone);
-                    $agentId = $newAgent['id'] ?? null;
-                }
+                $ownerId = $result['owner_id'];
                 
                 if ($level === 'bronze') {
-                    $success = "Akun Anda berhasil dibuat! Kode Agent Anda adalah: <strong>$agentCode</strong>";
+                    $success = "Akun Owner Anda berhasil dibuat! Username Anda adalah: <strong>$username</strong>";
                 } else {
-                    // Paket Berbayar -> Integrasi Sumopod QRIS Checkout
+                    // Paid plans -> Sumopod QRIS checkout
                     $prices = [
                         'silver' => 50000,
                         'gold' => 150000,
@@ -73,8 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $amount = $prices[$level] ?? 50000;
                     
                     try {
-                        $db = getDBConnection();
-                        // Ambil API Key & mode Sumopod
+                        // Get Sumopod API Keys
                         $stmt = $db->prepare("SELECT setting_value FROM payment_gateway_config WHERE gateway_name = 'sumopod' AND setting_key = 'api_key'");
                         $stmt->execute();
                         $apiKey = $stmt->fetchColumn();
@@ -87,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ? 'https://api-pay-sandbox.sumopod.com/api/v1/payments' 
                             : 'https://api-pay.sumopod.com/api/v1/payments';
                         
-                        $orderId = "SAAS-" . $agentId;
+                        $orderId = "SAAS-" . $ownerId;
                         
                         // Hit Sumopod API
                         $curl = curl_init();
@@ -100,13 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'amount' => $amount,
                                 'currency' => 'IDR',
                                 'expires_in_hours' => 24,
-                                'success_return_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/register.php?status=success&code=' . $agentCode,
+                                'success_return_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/register.php?status=success&code=' . $username,
                                 'cancel_return_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/register.php?status=cancelled',
                                 'payment_method_type_code' => 'QRIS'
                             ]),
                             CURLOPT_HTTPHEADER => [
                                 'Content-Type: application/json',
-                                'X-Api-Key: ' . ($apiKey ?: '642a01968d53909d47205eacaacf3c78a63c96637d44ae42f1e6e265eb6095f1') // Gunakan key default jika kosong
+                                'X-Api-Key: ' . ($apiKey ?: '642a01968d53909d47205eacaacf3c78a63c96637d44ae42f1e6e265eb6095f1')
                             ]
                         ]);
                         
@@ -116,16 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         $res = json_decode($response, true);
                         if ($httpCode >= 200 && $httpCode < 300 && isset($res['payment_link_url'])) {
-                            // Redirect ke link pembayaran QRIS Sumopod
                             header("Location: " . $res['payment_link_url']);
                             exit();
                         } else {
-                            // Jika API Sumopod error, aktifkan langsung sebagai toleransi kegagalan payment gateway
-                            $db->prepare("UPDATE agents SET status = 'active' WHERE id = ?")->execute([$agentId]);
-                            $success = "Akun dibuat (Aktif otomatis karena gangguan checkout Sumopod). Kode: <strong>$agentCode</strong>";
+                            // Fallback auto-active if API error
+                            $db->prepare("UPDATE owners SET status = 'active' WHERE id = ?")->execute([$ownerId]);
+                            $success = "Akun Owner dibuat (Aktif otomatis karena gangguan Sumopod). Username: <strong>$username</strong>";
                         }
                     } catch (Exception $ex) {
-                        $success = "Akun dibuat (Aktif otomatis karena gangguan system). Kode: <strong>$agentCode</strong>";
+                        $success = "Akun Owner dibuat (Aktif otomatis karena gangguan system). Username: <strong>$username</strong>";
                     }
                 }
             } else {
@@ -418,10 +425,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h2>Registrasi Berhasil!</h2>
                 <p style="margin-bottom: 20px;"><?= $success; ?></p>
                 <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
-                    Silakan gunakan nomor WhatsApp dan password Anda untuk masuk ke dashboard.
+                    Silakan gunakan Username / Email / WhatsApp dan password Anda untuk masuk ke dashboard Admin.
                 </p>
-                <a href="../agent/index.php" class="btn-register" style="display: inline-block; text-decoration: none; text-align: center; width: auto; padding: 12px 30px;">
-                    Masuk Dashboard Agent
+                <a href="../admin.php" class="btn-register" style="display: inline-block; text-decoration: none; text-align: center; width: auto; padding: 12px 30px;">
+                    Masuk Dashboard Admin
                 </a>
             </div>
         <?php else: ?>
@@ -493,7 +500,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn-register">Daftar & Buat Akun</button>
 
                 <div class="login-link">
-                    Sudah memiliki akun? <a href="../agent/index.php">Masuk di sini</a>
+                    Sudah memiliki akun? <a href="../admin.php">Masuk di sini</a>
                 </div>
             </form>
             

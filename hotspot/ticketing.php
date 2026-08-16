@@ -21,14 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ticket_number = 'TCK-' . date('Y') . '-' . rand(1000, 9999);
         
         try {
-            $stmt = $conn->prepare("INSERT INTO support_tickets (ticket_number, customer_name, complaint, priority, assigned_technician, status) 
-                                   VALUES (:ticket_number, :customer, :complaint, :priority, :technician, 'open')");
+            $ownerId = $_SESSION['owner_id'] ?? 0;
+            $stmt = $conn->prepare("INSERT INTO support_tickets (ticket_number, customer_name, complaint, priority, assigned_technician, status, owner_id) 
+                                   VALUES (:ticket_number, :customer, :complaint, :priority, :technician, 'open', :owner_id)");
             $stmt->execute([
                 ':ticket_number' => $ticket_number,
                 ':customer' => $customer,
                 ':complaint' => $complaint,
                 ':priority' => $priority,
-                ':technician' => $technician
+                ':technician' => $technician,
+                ':owner_id' => $ownerId
             ]);
             $message = "Tiket baru $ticket_number berhasil dibuat!";
         } catch (Exception $e) {
@@ -62,7 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch support tickets
 $tickets = [];
 try {
-    $stmt = $conn->query("SELECT * FROM support_tickets ORDER BY id DESC");
+    $ownerId = $_SESSION['owner_id'] ?? 0;
+    $stmt = $conn->prepare("SELECT * FROM support_tickets WHERE owner_id = ? ORDER BY id DESC");
+    $stmt->execute([$ownerId]);
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $error = "Gagal memuat tiket: " . $e->getMessage();

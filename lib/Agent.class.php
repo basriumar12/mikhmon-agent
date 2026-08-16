@@ -63,6 +63,15 @@ class Agent {
                 // Column doesn't exist, skip
             }
 
+            try {
+                $stmt = $this->db->query("SHOW COLUMNS FROM agents LIKE 'owner_id'");
+                if ($stmt->rowCount() > 0) {
+                    $fields['owner_id'] = ':owner_id';
+                }
+            } catch (Exception $e) {
+                // Column doesn't exist, skip
+            }
+            
             $columns = implode(', ', array_keys($fields));
             $placeholders = implode(', ', array_values($fields));
 
@@ -84,6 +93,10 @@ class Agent {
 
             if ($this->hasCommissionAmountColumn) {
                 $params[':commission_amount'] = $data['commission_amount'] ?? 0;
+            }
+            
+            if (isset($fields['owner_id'])) {
+                $params[':owner_id'] = $data['owner_id'] ?? ($_SESSION['owner_id'] ?? null);
             }
             
             // Add Telegram parameters only if fields exist
@@ -164,21 +177,30 @@ class Agent {
     /**
      * Get all agents
      */
-    public function getAllAgents($status = null) {
-        $sql = "SELECT * FROM agents";
-        if ($status) {
-            $sql .= " WHERE status = :status";
-        }
-        $sql .= " ORDER BY created_at DESC";
-        
-        $stmt = $this->db->prepare($sql);
-        if ($status) {
-            $stmt->execute([':status' => $status]);
-        } else {
-            $stmt->execute();
-        }
-        return $stmt->fetchAll();
-    }
+     public function getAllAgents($status = null) {
+         $ownerId = $_SESSION['owner_id'] ?? 0;
+         $sql = "SELECT * FROM agents";
+         $where = [];
+         $params = [];
+         
+         if ($ownerId > 0) {
+             $where[] = "owner_id = :owner_id";
+             $params[':owner_id'] = $ownerId;
+         }
+         if ($status) {
+             $where[] = "status = :status";
+             $params[':status'] = $status;
+         }
+         
+         if (!empty($where)) {
+             $sql .= " WHERE " . implode(" AND ", $where);
+         }
+         $sql .= " ORDER BY created_at DESC";
+         
+         $stmt = $this->db->prepare($sql);
+         $stmt->execute($params);
+         return $stmt->fetchAll();
+     }
     
     /**
      * Update agent

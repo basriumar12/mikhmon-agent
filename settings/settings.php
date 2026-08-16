@@ -24,21 +24,34 @@ if (!isset($_SESSION["mikhmon"])) {
 } else {
 
   if ($id == "settings" && explode("-",$router)[0] == "new") {
-    $data = '$data';
-    $f = fopen('./include/config.php', 'a');
-    fwrite($f, "\n'$'data['".$router."'] = array ('1'=>'".$router."!','".$router."@|@','".$router."#|#','".$router."%','".$router."^','".$router."&Rp','".$router."*10','".$router."(1','".$router.")','".$router."=10','".$router."@!@disable');");
-    fclose($f);
-    $search = "'$'data";
-    $replace = (string)"$data";
-    $file = file("./include/config.php");
-    $content = file_get_contents("./include/config.php");
-    $newcontent = str_replace((string)$search, (string)$replace, "$content");
-    file_put_contents("./include/config.php", "$newcontent");
-    echo "<script>window.location='./admin.php?id=settings&session=" . $router . "'</script>";
+    if (isset($_SESSION['owner_id']) && $_SESSION['owner_id'] > 0) {
+        try {
+            if (!function_exists('getDBConnection')) {
+                require_once(__DIR__ . '/../include/db_config.php');
+            }
+            $db = getDBConnection();
+            $stmt = $db->prepare("INSERT INTO router_sessions (owner_id, session_name, ip_address, username, password, live_report) VALUES (?, ?, '', '', '', 'disable')");
+            $stmt->execute([$_SESSION['owner_id'], $router]);
+        } catch (Exception $e) {}
+        echo "<script>window.location='./admin.php?id=settings&session=" . $router . "'</script>";
+        exit;
+    } else {
+        $data = '$data';
+        $f = fopen('./include/config.php', 'a');
+        fwrite($f, "\n'$'data['".$router."'] = array ('1'=>'".$router."!','".$router."@|@','".$router."#|#','".$router."%','".$router."^','".$router."&Rp','".$router."*10','".$router."(1','".$router.")','".$router."=10','".$router."@!@disable');");
+        fclose($f);
+        $search = "'$'data";
+        $replace = (string)"$data";
+        $file = file("./include/config.php");
+        $content = file_get_contents("./include/config.php");
+        $newcontent = str_replace((string)$search, (string)$replace, "$content");
+        file_put_contents("./include/config.php", "$newcontent");
+        echo "<script>window.location='./admin.php?id=settings&session=" . $router . "'</script>";
+        exit;
+    }
   }
 
   if (isset($_POST['save'])) {
-
     $siphost = (preg_replace('/\s+/', '', $_POST['ipmik']));
     $suserhost = ($_POST['usermik']);
     $spasswdhost = encrypt($_POST['passmik']);
@@ -53,25 +66,39 @@ if (!isset($_SESSION["mikhmon"])) {
     }
     $siface = ($_POST['iface']);
     $sinfolp = implode(unpack("H*", $_POST['infolp']));
-    //$sinfolp = encrypt($_POST['infolp']);
-    //$sinfolp = ($_POST['infolp']);
     $sidleto = ($_POST['idleto']);
-
     $sesname = (preg_replace('/\s+/', '-', $_POST['sessname']));
     $slivereport = ($_POST['livereport']);
 
-    $search = array('1' => "$session!$iphost", "$session@|@$userhost", "$session#|#$passwdhost", "$session%$hotspotname", "$session^$dnsname", "$session&$currency", "$session*$areload", "$session($iface", "$session)$infolp", "$session=$idleto", "'$session'", "$session@!@$livereport");
+    if (isset($_SESSION['owner_id']) && $_SESSION['owner_id'] > 0) {
+        try {
+            if (!function_exists('getDBConnection')) {
+                require_once(__DIR__ . '/../include/db_config.php');
+            }
+            $db = getDBConnection();
+            $stmt = $db->prepare("UPDATE router_sessions SET session_name = ?, ip_address = ?, username = ?, password = ?, hotspot_name = ?, dns_name = ?, currency = ?, auto_reload = ?, interface = ?, info_limit = ?, idle_timeout = ?, live_report = ? WHERE owner_id = ? AND session_name = ?");
+            $stmt->execute([
+                $sesname, $siphost, $suserhost, $spasswdhost, $shotspotname, $sdnsname, $scurrency, $sreload, $siface, $sinfolp, $sidleto, $slivereport,
+                $_SESSION['owner_id'], $session
+            ]);
+        } catch (Exception $e) {}
+        $_SESSION["connect"] = "";
+        echo "<script>window.location='./admin.php?id=settings&session=" . $sesname . "'</script>";
+        exit;
+    } else {
+        $search = array('1' => "$session!$iphost", "$session@|@$userhost", "$session#|#$passwdhost", "$session%$hotspotname", "$session^$dnsname", "$session&$currency", "$session*$areload", "$session($iface", "$session)$infolp", "$session=$idleto", "'$session'", "$session@!@$livereport");
+        $replace = array('1' => "$sesname!$siphost", "$sesname@|@$suserhost", "$sesname#|#$spasswdhost", "$sesname%$shotspotname", "$sesname^$sdnsname", "$sesname&$scurrency", "$sesname*$sreload", "$sesname($siface", "$sesname)$sinfolp", "$sesname=$sidleto", "'$sesname'", "$sesname@!@$slivereport");
 
-    $replace = array('1' => "$sesname!$siphost", "$sesname@|@$suserhost", "$sesname#|#$spasswdhost", "$sesname%$shotspotname", "$sesname^$sdnsname", "$sesname&$scurrency", "$sesname*$sreload", "$sesname($siface", "$sesname)$sinfolp", "$sesname=$sidleto", "'$sesname'", "$sesname@!@$slivereport");
-
-    for ($i = 1; $i < 15; $i++) {
-      $file = file("./include/config.php");
-      $content = file_get_contents("./include/config.php");
-      $newcontent = str_replace((string)$search[$i], (string)$replace[$i], "$content");
-      file_put_contents("./include/config.php", "$newcontent");
+        for ($i = 1; $i < 15; $i++) {
+          $file = file("./include/config.php");
+          $content = file_get_contents("./include/config.php");
+          $newcontent = str_replace((string)$search[$i], (string)$replace[$i], "$content");
+          file_put_contents("./include/config.php", "$newcontent");
+        }
+        $_SESSION["connect"] = "";
+        echo "<script>window.location='./admin.php?id=settings&session=" . $sesname . "'</script>";
+        exit;
     }
-    $_SESSION["connect"] = "";
-    echo "<script>window.location='./admin.php?id=settings&session=" . $sesname . "'</script>";
   }
   if ($currency == "") {
     echo "<script>window.location='./admin.php?id=settings&session=" . $session . "'</script>";
