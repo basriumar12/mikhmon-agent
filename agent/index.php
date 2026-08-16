@@ -79,6 +79,11 @@ include_once('include_head.php');
             <?= $error; ?>
           </td>
         </tr>
+        <tr>
+          <td class="align-middle text-center" style="padding-top: 15px;">
+            <span style="font-size: 14px; color: #777;">Belum punya akun? <a href="../public/register.php" style="color: #3b82f6; text-decoration: none; font-weight: bold;">Daftar Sekarang</a></span>
+          </td>
+        </tr>
       </table>
       </form>
       </center>
