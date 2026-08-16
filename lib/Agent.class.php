@@ -549,10 +549,20 @@ class Agent {
     }
     
     /**
+     * Get agent by phone or email
+     */
+    public function getAgentByPhoneOrEmail($identifier) {
+        $sql = "SELECT * FROM agents WHERE phone = :id OR email = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $identifier]);
+        return $stmt->fetch();
+    }
+    
+    /**
      * Verify agent login
      */
-    public function verifyLogin($phone, $password) {
-        $agent = $this->getAgentByPhone($phone);
+    public function verifyLogin($identifier, $password) {
+        $agent = $this->getAgentByPhoneOrEmail($identifier);
         
         if (!$agent) {
             return ['success' => false, 'message' => 'Agent tidak ditemukan'];

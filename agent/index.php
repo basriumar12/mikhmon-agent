@@ -61,7 +61,7 @@ include_once('include_head.php');
       <table class="table" style="width:90%">
         <tr>
           <td class="align-middle text-center">
-            <input style="width: 100%; height: 35px; font-size: 16px;" class="form-control" type="text" name="phone" id="phone" placeholder="Phone Number" required="1" autofocus>
+            <input style="width: 100%; height: 35px; font-size: 16px;" class="form-control" type="text" name="phone" id="phone" placeholder="Phone Number / Email" required="1" autofocus>
           </td>
         </tr>
         <tr>
