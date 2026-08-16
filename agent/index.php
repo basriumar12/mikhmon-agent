@@ -1,6 +1,7 @@
 <?php
 session_start();
-error_reporting(0);
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
 
 // Check if already logged in
 if (isset($_SESSION['agent_id'])) {
@@ -25,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['agent_id'] = $result['agent']['id'];
             $_SESSION['agent_name'] = $result['agent']['agent_name'];
             $_SESSION['agent_code'] = $result['agent']['agent_code'];
+            $_SESSION['owner_id'] = $result['agent']['owner_id'] ?? null;
             $_SESSION['agent_theme'] = 'dark'; // Default theme
             $_SESSION['agent_themecolor'] = '#3a4149';
             
