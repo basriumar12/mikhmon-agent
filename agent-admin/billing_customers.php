@@ -4,6 +4,17 @@
  */
 
 include_once('./include/db_config.php');
+if (file_exists('./include/config.php')) {
+    include_once('./include/config.php');
+}
+$routerOptions = [];
+if (isset($data) && is_array($data)) {
+    foreach ($data as $key => $val) {
+        if ($key !== 'mikhmon') {
+            $routerOptions[] = $key;
+        }
+    }
+}
 
 try {
     $db = getDBConnection();
@@ -384,6 +395,7 @@ $isolatedCustomers = count(array_filter($customers, static fn ($row) => (int)($r
                                 <th>Nama</th>
                                 <th>No. Layanan / Telepon</th>
                                 <th>PPPoE Username</th>
+                                <th>Router</th>
                                 <th>Paket</th>
                                 <th>Tgl Tagihan</th>
                                 <th>Status</th>
@@ -392,7 +404,7 @@ $isolatedCustomers = count(array_filter($customers, static fn ($row) => (int)($r
                         <tbody>
                             <?php if (empty($customers)): ?>
                                 <tr>
-                                    <td colspan="7" style="text-align:center; padding: 30px; color:#6b7280;">
+                                    <td colspan="8" style="text-align:center; padding: 30px; color:#6b7280;">
                                         <i class="fa fa-info-circle"></i> Belum ada data pelanggan billing.
                                     </td>
                                 </tr>
@@ -435,6 +447,16 @@ $isolatedCustomers = count(array_filter($customers, static fn ($row) => (int)($r
                                                 <span style="display:block;">Tag Telepon: <?= htmlspecialchars($customer['phone'] ?? '-'); ?></span>
                                                 <span style="display:block;">Device ID: <?= htmlspecialchars($customer['service_number'] ?? '-'); ?></span>
                                             </div>
+                                        </td>
+                                        <td>
+                                            <?php 
+                                            $routerName = $customer['router_session'] ?? '';
+                                            if (empty($routerName) || $routerName === 'none') {
+                                                echo '<span class="badge" style="background:#64748b;color:#ffffff;padding: 3px 6px; border-radius: 4px;font-size: 11px;">Tanpa MikroTik</span>';
+                                            } else {
+                                                echo '<span class="badge" style="background:#0284c7;color:#ffffff;padding: 3px 6px; border-radius: 4px;font-size: 11px;"><i class="fa fa-hdd-o"></i> ' . htmlspecialchars($routerName) . '</span>';
+                                            }
+                                            ?>
                                         </td>
                                         <td><?= htmlspecialchars($customer['profile_name'] ?? '-'); ?></td>
                                         <td><?= str_pad((int)$customer['billing_day'], 2, '0', STR_PAD_LEFT); ?> setiap bulan</td>
@@ -502,6 +524,18 @@ $isolatedCustomers = count(array_filter($customers, static fn ($row) => (int)($r
                         <label for="modal_genieacs_pppoe_username">PPPoE Username (GenieACS)</label>
                         <input type="text" id="modal_genieacs_pppoe_username" name="genieacs_pppoe_username" class="form-control" placeholder="user123@isp" required>
                         <small class="form-text text-muted">Harus sama dengan PPPoE username di GenieACS.</small>
+                    </div>
+                </div>
+                <div class="col-6 col-box-12">
+                    <div class="form-group">
+                        <label for="modal_router_session">Koneksi Router MikroTik</label>
+                        <select id="modal_router_session" name="router_session" class="form-control">
+                            <option value="none">Tanpa MikroTik (Manual/GenieACS Only)</option>
+                            <?php foreach ($routerOptions as $rSession): ?>
+                                <option value="<?= htmlspecialchars($rSession); ?>"><?= htmlspecialchars($rSession); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">Pilih router MikroTik yang menangani PPPoE pelanggan ini.</small>
                     </div>
                 </div>
             </div>
@@ -592,6 +626,17 @@ $isolatedCustomers = count(array_filter($customers, static fn ($row) => (int)($r
                     <div class="form-group">
                         <label>Nomor Layanan</label>
                         <input type="text" name="service_number" id="edit_service_number" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Koneksi Router MikroTik</label>
+                        <select name="router_session" id="edit_router_session" class="form-control">
+                            <option value="none">Tanpa MikroTik (Manual/GenieACS Only)</option>
+                            <?php foreach ($routerOptions as $rSession): ?>
+                                <option value="<?= htmlspecialchars($rSession); ?>"><?= htmlspecialchars($rSession); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">Router MikroTik yang menangani PPPoE pelanggan ini.</small>
                     </div>
                     
                     <div class="form-group">
@@ -919,6 +964,7 @@ function showEditModal(customerId) {
                 document.getElementById('edit_profile_id').value = customer.profile_id;
                 document.getElementById('edit_billing_day').value = customer.billing_day;
                 document.getElementById('edit_status').value = customer.status;
+                document.getElementById('edit_router_session').value = customer.router_session || 'none';
                 document.getElementById('edit_notes').value = customer.notes || '';
                 
                 hideLoading();

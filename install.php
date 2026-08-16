@@ -1182,6 +1182,7 @@ function sendTelegramNotification($botToken, $chatId, $message) {
                                 `email` VARCHAR(150) DEFAULT NULL,
                                 `address` TEXT DEFAULT NULL,
                                 `service_number` VARCHAR(100) DEFAULT NULL,
+                                `router_session` VARCHAR(100) DEFAULT NULL,
                                 `billing_day` TINYINT UNSIGNED NOT NULL DEFAULT 1,
                                 `status` ENUM('active','inactive') NOT NULL DEFAULT 'active',
                                 `is_isolated` TINYINT(1) NOT NULL DEFAULT 0,

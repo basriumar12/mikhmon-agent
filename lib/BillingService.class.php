@@ -313,9 +313,9 @@ class BillingService
     public function createCustomer(array $data): int
     {
         $sql = "INSERT INTO billing_customers
-                    (profile_id, name, phone, email, address, service_number, genieacs_match_mode, genieacs_pppoe_username, billing_day, status, is_isolated, notes)
+                    (profile_id, name, phone, email, address, service_number, router_session, genieacs_match_mode, genieacs_pppoe_username, billing_day, status, is_isolated, notes)
                 VALUES
-                    (:profile_id, :name, :phone, :email, :address, :service_number, :genieacs_match_mode, :genieacs_pppoe_username, :billing_day, :status, :is_isolated, :notes)";
+                    (:profile_id, :name, :phone, :email, :address, :service_number, :router_session, :genieacs_match_mode, :genieacs_pppoe_username, :billing_day, :status, :is_isolated, :notes)";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             ':profile_id' => $data['profile_id'],
@@ -324,6 +324,7 @@ class BillingService
             ':email' => $data['email'] ?? null,
             ':address' => $data['address'] ?? null,
             ':service_number' => $data['service_number'] ?? null,
+            ':router_session' => $data['router_session'] ?? null,
             ':genieacs_match_mode' => 'pppoe_username',
             ':genieacs_pppoe_username' => $data['genieacs_pppoe_username'] ?? null,
             ':billing_day' => $data['billing_day'],
@@ -343,6 +344,7 @@ class BillingService
                     email = :email,
                     address = :address,
                     service_number = :service_number,
+                    router_session = :router_session,
                     genieacs_match_mode = :genieacs_match_mode,
                     genieacs_pppoe_username = :genieacs_pppoe_username,
                     billing_day = :billing_day,
@@ -359,6 +361,7 @@ class BillingService
             ':email' => $data['email'] ?? null,
             ':address' => $data['address'] ?? null,
             ':service_number' => $data['service_number'] ?? null,
+            ':router_session' => $data['router_session'] ?? null,
             ':genieacs_match_mode' => 'pppoe_username',
             ':genieacs_pppoe_username' => $data['genieacs_pppoe_username'] ?? null,
             ':billing_day' => $data['billing_day'],
@@ -890,7 +893,7 @@ class BillingService
     {
         if (!empty($customer['service_number'])) {
             // update PPP secret profile to isolation profile
-            $this->applyIsolationProfileToPpp($customer['service_number'], $customer['profile_id']);
+            $this->applyIsolationProfileToPpp($customer['service_number'], $customer['profile_id'], $customer['router_session'] ?? null);
         }
 
         $this->logEvent((int)$customer['id'], (int)$invoice['id'], 'customer_isolation_applied', [
@@ -898,8 +901,14 @@ class BillingService
         ]);
     }
 
-    private function applyIsolationProfileToPpp(string $username, $profileId): void
+    private function applyIsolationProfileToPpp(string $username, $profileId, ?string $routerSession = null): void
     {
+        $router = trim((string)$routerSession);
+        if ($router === 'none') {
+            // Standalone billing, bypass MikroTik isolation
+            return;
+        }
+
         $profile = $this->getProfileById((int)$profileId);
         if (!$profile) {
             return;
@@ -910,8 +919,16 @@ class BillingService
             return;
         }
 
+        if ($router === '') {
+            try {
+                $router = $this->resolveRouterSession();
+            } catch (Throwable $e) {
+                return;
+            }
+        }
+
         try {
-            $mikrotik = new MikrotikService($this->resolveRouterSession());
+            $mikrotik = new MikrotikService($router);
             $success = $mikrotik->setPppProfile($username, $isolationProfile);
             if ($success) {
                 $mikrotik->dropActiveSession($username);
@@ -927,6 +944,12 @@ class BillingService
             return;
         }
 
+        $router = trim((string)($customer['router_session'] ?? ''));
+        if ($router === 'none') {
+            // Standalone billing, bypass MikroTik normal profile restoring
+            return;
+        }
+
         $profile = $this->getProfileById((int)$customer['profile_id']);
         if (!$profile) {
             return;
@@ -937,8 +960,16 @@ class BillingService
             return;
         }
 
+        if ($router === '') {
+            try {
+                $router = $this->resolveRouterSession();
+            } catch (Throwable $e) {
+                return;
+            }
+        }
+
         try {
-            $mikrotik = new MikrotikService($this->resolveRouterSession());
+            $mikrotik = new MikrotikService($router);
             $success = $mikrotik->setPppProfile($customer['service_number'], $normalProfile);
             if ($success) {
                 $mikrotik->dropActiveSession($customer['service_number']);

@@ -7,10 +7,14 @@
 // Database credentials untuk HOSTING
 // PENTING: Ganti dengan kredensial database hosting Anda
 // Format biasanya: namauser_namadb
-define('DB_HOST', 'localhost'); // atau IP hosting
-define('DB_USER', 'root'); // <-- GANTI dengan username database hosting
-define('DB_PASS', ''); // <-- GANTI dengan password database hosting
-define('DB_NAME', 'mikhmon-server'); // <-- GANTI dengan nama database di hosting
+// Database port for MAMP (default 8889)
+define('DB_PORT', 8889);
+
+define('DB_HOST', '127.0.0.1'); // use TCP to connect to MySQL
+define('DB_USER', 'root'); // MySQL username
+define('DB_PASS', 'root'); // MySQL password
+define('DB_NAME', 'mikhmon_agents'); // database name as seen in phpMyAdmin
+
 define('DB_CHARSET', 'utf8mb4');
 
 // Create database connection
@@ -19,12 +23,11 @@ function getDBConnection() {
     
     if ($conn === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
             ];
             $conn = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
