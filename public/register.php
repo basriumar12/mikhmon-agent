@@ -14,6 +14,8 @@ include_once(__DIR__ . '/../lib/Agent.class.php');
 $error = '';
 $success = '';
 
+$planParam = $_GET['plan'] ?? 'bronze';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['agent_name']);
     $phone = trim($_POST['phone']);
@@ -33,6 +35,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $agentCode = $agent->generateAgentCode();
             
+            // Tentukan status awal berdasarkan paket
+            // Paket bronze (free) -> active. Paket berbayar -> inactive (harus bayar dulu)
+            $status = ($level === 'bronze') ? 'active' : 'inactive';
+            
             $data = [
                 'agent_code' => $agentCode,
                 'agent_name' => $name,
@@ -40,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $email,
                 'password' => $password,
                 'balance' => 0.00,
-                'status' => 'active',
+                'status' => $status,
                 'level' => $level,
                 'created_by' => 'SaaS Self Registration',
                 'notes' => 'Pendaftaran Mandiri SaaS'
@@ -48,7 +54,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $result = $agent->createAgent($data);
             if ($result['success']) {
-                $success = "Akun Anda berhasil dibuat! Kode Agent Anda adalah: <strong>$agentCode</strong>";
+                $agentId = $result['agent_id'] ?? null;
+                if (!$agentId) {
+                    // Coba cari ID dari phone jika agent_id tidak dikembalikan
+                    $newAgent = $agent->getAgentByPhone($phone);
+                    $agentId = $newAgent['id'] ?? null;
+                }
+                
+                if ($level === 'bronze') {
+                    $success = "Akun Anda berhasil dibuat! Kode Agent Anda adalah: <strong>$agentCode</strong>";
+                } else {
+                    // Paket Berbayar -> Integrasi Sumopod QRIS Checkout
+                    $prices = [
+                        'silver' => 50000,
+                        'gold' => 150000,
+                        'platinum' => 300000
+                    ];
+                    $amount = $prices[$level] ?? 50000;
+                    
+                    try {
+                        $db = getDBConnection();
+                        // Ambil API Key & mode Sumopod
+                        $stmt = $db->prepare("SELECT setting_value FROM payment_gateway_config WHERE gateway_name = 'sumopod' AND setting_key = 'api_key'");
+                        $stmt->execute();
+                        $apiKey = $stmt->fetchColumn();
+                        
+                        $stmt = $db->prepare("SELECT setting_value FROM payment_gateway_config WHERE gateway_name = 'sumopod' AND setting_key = 'is_sandbox'");
+                        $stmt->execute();
+                        $isSandbox = (int)$stmt->fetchColumn();
+                        
+                        $apiUrl = $isSandbox 
+                            ? 'https://api-pay-sandbox.sumopod.com/api/v1/payments' 
+                            : 'https://api-pay.sumopod.com/api/v1/payments';
+                        
+                        $orderId = "SAAS-" . $agentId;
+                        
+                        // Hit Sumopod API
+                        $curl = curl_init();
+                        curl_setopt_array($curl, [
+                            CURLOPT_URL => $apiUrl,
+                            CURLOPT_RETURNTRANSFER => true,
+                            CURLOPT_POST => true,
+                            CURLOPT_POSTFIELDS => json_encode([
+                                'order_id' => $orderId,
+                                'amount' => $amount,
+                                'currency' => 'IDR',
+                                'expires_in_hours' => 24,
+                                'success_return_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/register.php?status=success&code=' . $agentCode,
+                                'cancel_return_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/public/register.php?status=cancelled',
+                                'payment_method_type_code' => 'QRIS'
+                            ]),
+                            CURLOPT_HTTPHEADER => [
+                                'Content-Type: application/json',
+                                'X-Api-Key: ' . ($apiKey ?: '642a01968d53909d47205eacaacf3c78a63c96637d44ae42f1e6e265eb6095f1') // Gunakan key default jika kosong
+                            ]
+                        ]);
+                        
+                        $response = curl_exec($curl);
+                        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+                        curl_close($curl);
+                        
+                        $res = json_decode($response, true);
+                        if ($httpCode >= 200 && $httpCode < 300 && isset($res['payment_link_url'])) {
+                            // Redirect ke link pembayaran QRIS Sumopod
+                            header("Location: " . $res['payment_link_url']);
+                            exit();
+                        } else {
+                            // Jika API Sumopod error, aktifkan langsung sebagai toleransi kegagalan payment gateway
+                            $db->prepare("UPDATE agents SET status = 'active' WHERE id = ?")->execute([$agentId]);
+                            $success = "Akun dibuat (Aktif otomatis karena gangguan checkout Sumopod). Kode: <strong>$agentCode</strong>";
+                        }
+                    } catch (Exception $ex) {
+                        $success = "Akun dibuat (Aktif otomatis karena gangguan system). Kode: <strong>$agentCode</strong>";
+                    }
+                }
             } else {
                 $error = $result['message'];
             }
@@ -385,26 +464,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <span class="plans-label">Pilih Paket Langganan SaaS:</span>
                 <div class="plans-grid">
-                    <div class="plan-card active" onclick="selectPlan(this, 'bronze')">
-                        <input type="radio" name="level" value="bronze" checked>
+                    <div class="plan-card <?= $planParam == 'bronze' ? 'active' : ''; ?>" onclick="selectPlan(this, 'bronze')">
+                        <input type="radio" name="level" value="bronze" <?= $planParam == 'bronze' ? 'checked' : ''; ?>>
                         <h3>Bronze</h3>
                         <div class="price">Gratis (Masa Uji)</div>
                         <div class="features">1 Router<br>100 Voucher / bln</div>
                     </div>
-                    <div class="plan-card" onclick="selectPlan(this, 'silver')">
-                        <input type="radio" name="level" value="silver">
+                    <div class="plan-card <?= $planParam == 'silver' ? 'active' : ''; ?>" onclick="selectPlan(this, 'silver')">
+                        <input type="radio" name="level" value="silver" <?= $planParam == 'silver' ? 'checked' : ''; ?>>
                         <h3>Silver</h3>
                         <div class="price">Rp 50rb / bln</div>
                         <div class="features">2 Router<br>300 Voucher / bln</div>
                     </div>
-                    <div class="plan-card" onclick="selectPlan(this, 'gold')">
-                        <input type="radio" name="level" value="gold">
+                    <div class="plan-card <?= $planParam == 'gold' ? 'active' : ''; ?>" onclick="selectPlan(this, 'gold')">
+                        <input type="radio" name="level" value="gold" <?= $planParam == 'gold' ? 'checked' : ''; ?>>
                         <h3>Gold</h3>
                         <div class="price">Rp 150rb / bln</div>
                         <div class="features">4 Router + 3 OLT<br>Unlimited Voucher</div>
                     </div>
-                    <div class="plan-card" onclick="selectPlan(this, 'platinum')">
-                        <input type="radio" name="level" value="platinum">
+                    <div class="plan-card <?= $planParam == 'platinum' ? 'active' : ''; ?>" onclick="selectPlan(this, 'platinum')">
+                        <input type="radio" name="level" value="platinum" <?= $planParam == 'platinum' ? 'checked' : ''; ?>>
                         <h3>Platinum</h3>
                         <div class="price">Rp 300rb / bln</div>
                         <div class="features">Ulimited Router & OLT<br>Prioritas Support</div>

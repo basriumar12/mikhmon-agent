@@ -67,6 +67,32 @@ try {
             throw new Exception('Failed to process agent topup');
         }
         exit;
+    } elseif (strpos($order_id, 'SAAS-') === 0) {
+        // Handle SaaS Agent Registration Payment
+        $agentId = (int)str_replace('SAAS-', '', $order_id);
+        
+        $conn = getDBConnection();
+        $stmt = $conn->prepare("SELECT id, agent_name, phone FROM agents WHERE id = ?");
+        $stmt->execute([$agentId]);
+        $agentUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$agentUser) {
+            throw new Exception("Agent with ID $agentId not found");
+        }
+        
+        // Update Agent status to active
+        $stmt = $conn->prepare("UPDATE agents SET status = 'active' WHERE id = ?");
+        $stmt->execute([$agentId]);
+        
+        // Insert record to agent transactions
+        $stmt = $conn->prepare("INSERT INTO agent_transactions (agent_id, transaction_type, amount, balance_before, balance_after, description, created_by) 
+                               VALUES (?, 'topup', ?, 0, 0, ?, 'Sumopod SaaS Payment')");
+        $amount = (float)($data['amount'] ?? 0);
+        $stmt->execute([$agentId, $amount, "Pembayaran Registrasi Paket SaaS Mandiri"]);
+        
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'SaaS registration payment processed, agent activated']);
+        exit;
     } else {
         // Handle Public Voucher / Billing Sales
         $status = $payment->getPaymentStatus($payload);
