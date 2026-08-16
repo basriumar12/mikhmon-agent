@@ -22,12 +22,29 @@ class PaymentGateway {
      * Load payment gateway configuration
      */
     private function loadConfig() {
-        $stmt = $this->db->query("SELECT setting_key, setting_value FROM agent_settings WHERE setting_key LIKE 'payment_%'");
-        
+        // Load legacy settings
         $this->config = [];
-        while ($row = $stmt->fetch()) {
-            $this->config[$row['setting_key']] = $row['setting_value'];
-        }
+        try {
+            $stmt = $this->db->query("SELECT setting_key, setting_value FROM agent_settings WHERE setting_key LIKE 'payment_%'");
+            while ($row = $stmt->fetch()) {
+                $this->config[$row['setting_key']] = $row['setting_value'];
+            }
+        } catch (Exception $e) {}
+        
+        // Load from payment_gateway_config table
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM payment_gateway_config WHERE gateway_name = ?");
+            $stmt->execute([$this->gateway]);
+            $gw = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($gw) {
+                $this->config['api_key'] = $gw['api_key'];
+                $this->config['api_secret'] = $gw['api_secret'];
+                $this->config['merchant_code'] = $gw['merchant_code'];
+                $this->config['callback_token'] = $gw['callback_token'];
+                $this->config['is_sandbox'] = $gw['is_sandbox'];
+                $this->config['is_active'] = $gw['is_active'];
+            }
+        } catch (Exception $e) {}
     }
     
     /**
@@ -39,9 +56,77 @@ class PaymentGateway {
                 return $this->createMidtransPayment($agentId, $amount);
             case 'xendit':
                 return $this->createXenditPayment($agentId, $amount);
+            case 'sumopod':
+                return $this->createSumopodPayment($agentId, $amount);
             default:
                 return ['success' => false, 'message' => 'Gateway not supported'];
         }
+    }
+    
+    /**
+     * Create Sumopod payment
+     */
+    private function createSumopodPayment($agentId, $amount) {
+        $apiKey = $this->config['api_key'] ?? '';
+        $isSandbox = $this->config['is_sandbox'] ?? 1;
+        
+        if (empty($apiKey)) {
+            return ['success' => false, 'message' => 'Sumopod not configured'];
+        }
+        
+        $stmt = $this->db->prepare("SELECT * FROM agents WHERE id = ?");
+        $stmt->execute([$agentId]);
+        $agent = $stmt->fetch();
+        
+        if (!$agent) {
+            return ['success' => false, 'message' => 'Agent not found'];
+        }
+        
+        $orderId = 'TOPUP-' . $agentId . '-' . time();
+        
+        $baseUrl = $isSandbox 
+            ? 'https://api-pay-sandbox.sumopod.com/api/v1' 
+            : 'https://api-pay.sumopod.com/api/v1';
+            
+        $payload = [
+            'order_id' => $orderId,
+            'amount' => (int)$amount,
+            'currency' => 'IDR',
+            'expires_in_hours' => 24,
+            'success_return_url' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/agent/topup_status.php?order_id=' . $orderId,
+            'cancel_return_url' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/agent/topup.php',
+            'payment_method_type_code' => 'QRIS'
+        ];
+        
+        $ch = curl_init($baseUrl . '/payments');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-Api-Key: ' . $apiKey
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode == 200 || $httpCode == 201) {
+            $result = json_decode($response, true);
+            
+            // Save payment record
+            $this->savePaymentRecord($orderId, $agentId, $amount, 'sumopod', 'pending');
+            
+            return [
+                'success' => true,
+                'order_id' => $orderId,
+                'payment_url' => $result['payment_link_url'] ?? null,
+                'payment_reference' => $result['payment_id'] ?? $orderId,
+                'raw_response' => $result
+            ];
+        }
+        
+        return ['success' => false, 'message' => 'Failed to create payment via Sumopod'];
     }
     
     /**
@@ -198,9 +283,27 @@ class PaymentGateway {
                 return $this->handleMidtransCallback($data);
             case 'xendit':
                 return $this->handleXenditCallback($data);
+            case 'sumopod':
+                return $this->handleSumopodCallback($data);
             default:
                 return false;
         }
+    }
+    
+    /**
+     * Handle Sumopod callback
+     */
+    private function handleSumopodCallback($data) {
+        $eventType = $data['event_type'] ?? '';
+        $innerData = $data['data'] ?? $data;
+        $orderId = $innerData['order_id'] ?? '';
+        $status = $innerData['status'] ?? '';
+        
+        if ($eventType === 'payment.completed' || $status === 'completed' || $status === 'paid' || $status === 'success') {
+            return $this->processSuccessfulPayment($orderId);
+        }
+        
+        return false;
     }
     
     /**

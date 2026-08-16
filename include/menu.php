@@ -544,6 +544,26 @@ include('./info.php');
     <a href="./?hotspot=billing-portal&session=<?= $session; ?>" class="<?= $sbillingportal; ?>"> <i class="fa fa-globe "></i> Portal Pelanggan </a>
   </div>
 
+  <!-- OLT & Infrastruktur -->
+  <?php
+  $soltactive = ($hotspot == 'olt-monitoring') ? 'active' : '';
+  $sidemapactive = ($hotspot == 'side-map') ? 'active' : '';
+  $sinventoryactive = ($hotspot == 'inventory') ? 'active' : '';
+  $sticketingactive = ($hotspot == 'ticketing') ? 'active' : '';
+  
+  $infraopen = ($hotspot == 'olt-monitoring' || $hotspot == 'side-map' || $hotspot == 'inventory' || $hotspot == 'ticketing') ? 'menu-open' : '';
+  $infraactive = ($hotspot == 'olt-monitoring' || $hotspot == 'side-map' || $hotspot == 'inventory' || $hotspot == 'ticketing') ? 'active' : '';
+  ?>
+  <div class="dropdown-btn <?= $infraactive; ?>"><i class="fa fa-server"></i> OLT & Infrastruktur
+    <i class="fa fa-caret-down"></i>
+  </div>
+  <div class="dropdown-container <?= $infraopen; ?>">
+    <a href="./?hotspot=olt-monitoring&session=<?= $session; ?>" class="<?= $soltactive; ?>"> <i class="fa fa-desktop "></i> OLT Monitoring </a>
+    <a href="./?hotspot=side-map&session=<?= $session; ?>" class="<?= $sidemapactive; ?>"> <i class="fa fa-map-marker "></i> Peta Jaringan (Side Map) </a>
+    <a href="./?hotspot=inventory&session=<?= $session; ?>" class="<?= $sinventoryactive; ?>"> <i class="fa fa-archive "></i> Inventory Barang </a>
+    <a href="./?hotspot=ticketing&session=<?= $session; ?>" class="<?= $sticketingactive; ?>"> <i class="fa fa-ticket "></i> Tiketing & Penugasan </a>
+  </div>
+
  <!--genieacs-->
   <a href="./?hotspot=genieacs&session=<?= $session; ?>" class="menu <?= $sgenieacs; ?>"><i class="fa fa-wifi"></i> GenieACS - ONU Management</a>
 

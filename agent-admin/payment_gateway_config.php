@@ -94,7 +94,7 @@ $session = $_GET['session'] ?? '';
     
     <!-- Payment Gateway Summary -->
     <div class="row mb-3">
-        <div class="col-4 col-box-6">
+        <div class="col-3 col-box-6">
             <div class="box bg-blue bmh-75 gateway-box" onclick="switchToTab('tripay')" style="cursor: pointer;">
                 <h1><?= isset($gateway_config['tripay']) && $gateway_config['tripay']['is_active'] ? 'ON' : 'OFF'; ?>
                     <span style="font-size: 15px;"><?= isset($gateway_config['tripay']) && $gateway_config['tripay']['is_sandbox'] ? 'sandbox' : 'live'; ?></span>
@@ -102,7 +102,7 @@ $session = $_GET['session'] ?? '';
                 <div><i class="fa fa-credit-card"></i> Tripay Gateway</div>
             </div>
         </div>
-        <div class="col-4 col-box-6">
+        <div class="col-3 col-box-6">
             <div class="box bg-green bmh-75 gateway-box" onclick="switchToTab('xendit')" style="cursor: pointer;">
                 <h1><?= isset($gateway_config['xendit']) && $gateway_config['xendit']['is_active'] ? 'ON' : 'OFF'; ?>
                     <span style="font-size: 15px;"><?= isset($gateway_config['xendit']) && $gateway_config['xendit']['is_sandbox'] ? 'sandbox' : 'live'; ?></span>
@@ -110,12 +110,20 @@ $session = $_GET['session'] ?? '';
                 <div><i class="fa fa-credit-card"></i> Xendit Gateway</div>
             </div>
         </div>
-        <div class="col-4 col-box-6">
+        <div class="col-3 col-box-6">
             <div class="box bg-yellow bmh-75 gateway-box" onclick="switchToTab('midtrans')" style="cursor: pointer;">
                 <h1><?= isset($gateway_config['midtrans']) && $gateway_config['midtrans']['is_active'] ? 'ON' : 'OFF'; ?>
                     <span style="font-size: 15px;"><?= isset($gateway_config['midtrans']) && $gateway_config['midtrans']['is_sandbox'] ? 'sandbox' : 'live'; ?></span>
                 </h1>
                 <div><i class="fa fa-credit-card"></i> Midtrans Gateway</div>
+            </div>
+        </div>
+        <div class="col-3 col-box-6">
+            <div class="box bg-red bmh-75 gateway-box" onclick="switchToTab('sumopod')" style="cursor: pointer;">
+                <h1><?= isset($gateway_config['sumopod']) && $gateway_config['sumopod']['is_active'] ? 'ON' : 'OFF'; ?>
+                    <span style="font-size: 15px;"><?= isset($gateway_config['sumopod']) && $gateway_config['sumopod']['is_sandbox'] ? 'sandbox' : 'live'; ?></span>
+                </h1>
+                <div><i class="fa fa-qrcode"></i> Sumopod QRIS</div>
             </div>
         </div>
     </div>
@@ -152,6 +160,9 @@ $session = $_GET['session'] ?? '';
             </button>
             <button type="button" class="btn btn-outline-warning" onclick="switchToTab('midtrans')" id="tab-midtrans">
                 <i class="fa fa-credit-card"></i> Midtrans
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="switchToTab('sumopod')" id="tab-sumopod">
+                <i class="fa fa-qrcode"></i> Sumopod
             </button>
         </div>
     </div>
@@ -346,6 +357,67 @@ $session = $_GET['session'] ?? '';
                 
                 <button type="submit" class="btn btn-primary">
                     <i class="fa fa-save"></i> Simpan Konfigurasi Midtrans
+                </button>
+            </form>
+        </div>
+        
+        <!-- SUMOPOD -->
+        <div id="sumopod" class="tab-pane fade">
+            <?php
+            $sumopod = $gateway_config['sumopod'] ?? [
+                'is_active' => 0,
+                'is_sandbox' => 1,
+                'api_key' => '',
+                'api_secret' => '',
+                'merchant_code' => '',
+                'callback_token' => ''
+            ];
+            ?>
+            <form method="POST" action="">
+                <input type="hidden" name="gateway_name" value="sumopod">
+                <input type="hidden" name="save_gateway" value="1">
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="is_active" value="1" <?= $sumopod['is_active'] ? 'checked' : ''; ?>>
+                                <strong>Aktifkan Sumopod</strong>
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" name="is_sandbox" value="1" <?= $sumopod['is_sandbox'] ? 'checked' : ''; ?>>
+                                Mode Sandbox (Testing)
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>API Key (X-Api-Key) <span class="text-danger">*</span></label>
+                            <input type="text" name="api_key" class="form-control" 
+                                   value="<?= htmlspecialchars($sumopod['api_key']); ?>" required>
+                            <small class="text-muted">Masukkan API Key Sumopod Anda</small>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Webhook Token (X-Webhook-Token) <span class="text-danger">*</span></label>
+                            <input type="text" name="callback_token" class="form-control" 
+                                   value="<?= htmlspecialchars($sumopod['callback_token']); ?>" required>
+                            <small class="text-muted">Gunakan token webhook yang diatur di panel Sumopod</small>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>Webhook URL:</strong><br>
+                            <code><?= (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST']; ?>/public/callback/sumopod.php</code>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-save"></i> Simpan Konfigurasi Sumopod
                 </button>
             </form>
         </div>

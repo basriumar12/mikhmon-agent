@@ -109,6 +109,8 @@ class PublicPayment {
                 return $this->createXenditPayment($data);
             case 'midtrans':
                 return $this->createMidtransPayment($data);
+            case 'sumopod':
+                return $this->createSumopodPayment($data);
             default:
                 error_log("PublicPayment - Unsupported gateway: " . $this->gateway_name);
                 throw new Exception("Gateway not supported");
@@ -386,6 +388,68 @@ class PublicPayment {
     }
     
     /**
+     * SUMOPOD - Create payment
+     */
+    private function createSumopodPayment($data) {
+        $apiKey = $this->config['api_key'] ?? '';
+        $isSandbox = $this->config['is_sandbox'] ?? 1;
+        
+        if (empty($apiKey)) {
+            throw new Exception("Sumopod API Key not configured");
+        }
+        
+        $baseUrl = $isSandbox 
+            ? 'https://api-pay-sandbox.sumopod.com/api/v1' 
+            : 'https://api-pay.sumopod.com/api/v1';
+            
+        $merchantRef = 'INV-' . time() . '-' . rand(1000, 9999);
+        
+        $payload = [
+            'order_id' => $merchantRef,
+            'amount' => (int)$data['amount'],
+            'currency' => 'IDR',
+            'expires_in_hours' => 24,
+            'success_return_url' => $data['return_url'] ?? '',
+            'cancel_return_url' => $data['return_url'] ?? '',
+            'payment_method_type_code' => 'QRIS'
+        ];
+        
+        $ch = curl_init($baseUrl . '/payments');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-Api-Key: ' . $apiKey
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($curlError) {
+            throw new Exception("Connection error: " . $curlError);
+        }
+        
+        $result = json_decode($response, true);
+        if ($httpCode !== 200 && $httpCode !== 201) {
+            throw new Exception($result['message'] ?? "Sumopod API returned HTTP Code " . $httpCode);
+        }
+        
+        return [
+            'success' => true,
+            'transaction_id' => $merchantRef,
+            'payment_reference' => $result['payment_id'] ?? $merchantRef,
+            'payment_url' => $result['payment_link_url'] ?? null,
+            'amount' => $result['amount'],
+            'fee' => $result['fee'] ?? 0,
+            'expired_at' => isset($result['expires_at']) ? date('Y-m-d H:i:s', strtotime($result['expires_at'])) : date('Y-m-d H:i:s', strtotime('+24 hours')),
+            'raw_response' => $result
+        ];
+    }
+    
+    /**
      * Verify callback signature
      */
     public function verifyCallback($data, $signature) {
@@ -396,6 +460,8 @@ class PublicPayment {
                 return $this->verifyXenditCallback($data, $signature);
             case 'midtrans':
                 return $this->verifyMidtransCallback($data, $signature);
+            case 'sumopod':
+                return $this->verifySumopodCallback($data, $signature);
             default:
                 return false;
         }
@@ -444,6 +510,17 @@ class PublicPayment {
     }
     
     /**
+     * Verify Sumopod callback
+     */
+    private function verifySumopodCallback($data, $signature) {
+        $callbackToken = $this->config['callback_token'] ?? '';
+        if (empty($callbackToken)) {
+            return true; // Skip verification if token is not set
+        }
+        return hash_equals($callbackToken, $signature);
+    }
+    
+    /**
      * Get payment status from callback data
      */
     public function getPaymentStatus($data) {
@@ -454,6 +531,8 @@ class PublicPayment {
                 return $this->getXenditStatus($data);
             case 'midtrans':
                 return $this->getMidtransStatus($data);
+            case 'sumopod':
+                return $this->getSumopodStatus($data);
             default:
                 return 'unknown';
         }
@@ -510,5 +589,30 @@ class PublicPayment {
         }
         
         return 'pending';
+    }
+    
+    /**
+     * Get Sumopod payment status
+     */
+    private function getSumopodStatus($data) {
+        // Payload could be {"event_type": "payment.completed", "data": {...}}
+        // Or directly the status field
+        $status = $data['status'] ?? '';
+        if (isset($data['data']['status'])) {
+            $status = $data['data']['status'];
+        }
+        
+        switch (strtolower($status)) {
+            case 'completed':
+            case 'paid':
+            case 'success':
+                return 'paid';
+            case 'expired':
+                return 'expired';
+            case 'failed':
+                return 'failed';
+            default:
+                return 'pending';
+        }
     }
 }

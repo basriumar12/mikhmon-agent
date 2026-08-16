@@ -644,6 +644,16 @@ $pdo->exec("INSERT INTO payment_gateway_config (gateway_name, is_active, is_sand
     ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), is_sandbox = VALUES(is_sandbox)");
 logMessage('Payment gateway config Tripay dipastikan ada', 'ok');
 
+$pdo->exec("INSERT INTO payment_gateway_config (gateway_name, is_active, is_sandbox)
+    VALUES ('sumopod', 0, 1)
+    ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), is_sandbox = VALUES(is_sandbox)");
+logMessage('Payment gateway config Sumopod dipastikan ada', 'ok');
+
+$pdo->exec("INSERT INTO payment_methods (gateway_name, method_code, method_name, method_type, name, type, display_name, icon, admin_fee_type, admin_fee_value, min_amount, max_amount, is_active, sort_order)
+    VALUES ('sumopod', 'qris', 'QRIS Sumopod', 'qris', 'QRIS Sumopod', 'qris', 'QRIS Sumopod', 'fa-qrcode', 'fixed', 300, 1000, 10000000, 1, 1)
+    ON DUPLICATE KEY UPDATE method_name = VALUES(method_name), is_active = VALUES(is_active)");
+logMessage('Payment method QRIS Sumopod dipastikan ada', 'ok');
+
 $pdo->exec("INSERT IGNORE INTO site_pages (page_slug, page_title, page_content) VALUES
     ('tos', 'Syarat dan Ketentuan', '<h3>Syarat dan Ketentuan</h3><p>Sesuaikan konten ini.</p>'),
     ('privacy', 'Kebijakan Privasi', '<h3>Kebijakan Privasi</h3><p>Sesuaikan konten ini.</p>'),

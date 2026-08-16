@@ -669,6 +669,23 @@ elseif ($removeexpiredhotspotuser != "") {
     flush();
   }
 
+  // OLT Monitoring
+  elseif ($hotspot == "olt-monitoring") {
+    include_once('./hotspot/olt_monitoring.php');
+  }
+  // Peta Jaringan (Side Map)
+  elseif ($hotspot == "side-map") {
+    include_once('./hotspot/side_map.php');
+  }
+  // Inventory Barang
+  elseif ($hotspot == "inventory") {
+    include_once('./hotspot/inventory.php');
+  }
+  // Tiketing & Penugasan
+  elseif ($hotspot == "ticketing") {
+    include_once('./hotspot/ticketing.php');
+  }
+
 // hotspot Cookies
   elseif ($hotspot == "cookies") {
     include_once('./hotspot/cookies.php');
