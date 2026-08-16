@@ -3,6 +3,27 @@
  * OLT Monitoring System
  * Support: ZTE C300, C320, HIOSO, HISFOCUS, VSOL, C-DATA
  */
+
+require_once(__DIR__ . '/../lib/OltClient.class.php');
+$oltClient = new OltClient();
+$selectedOlt = $_GET['olt'] ?? 'olt-1';
+$onuList = $oltClient->getOnuList($selectedOlt);
+
+// Calculate stats dynamically
+$totalOnu = count($onuList);
+$onlineOnu = 0;
+$losOnu = 0;
+$warningOnu = 0;
+
+foreach ($onuList as $onu) {
+    if ($onu['status'] === 'Online') {
+        $onlineOnu++;
+    } elseif ($onu['status'] === 'LOS') {
+        $losOnu++;
+    } else {
+        $warningOnu++;
+    }
+}
 ?>
 <div class="row">
     <div class="col-12">
@@ -10,10 +31,10 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3><i class="fa fa-desktop"></i> OLT Monitoring (ZTE & HIOSO)</h3>
                 <div>
-                    <select class="form-control" style="width: 250px; display: inline-block; vertical-align: middle;">
-                        <option value="olt-1">ZTE C320 (Samudra Indah - OLT 01)</option>
-                        <option value="olt-2">ZTE C300 (Samudra Indah - OLT 02)</option>
-                        <option value="olt-3">HIOSO (Samudra Indah - OLT 03)</option>
+                    <select class="form-control" id="olt-selector" style="width: 250px; display: inline-block; vertical-align: middle;" onchange="changeOlt(this.value)">
+                        <option value="olt-1" <?= $selectedOlt == 'olt-1' ? 'selected' : ''; ?>>ZTE C320 (Samudra Indah - OLT 01)</option>
+                        <option value="olt-2" <?= $selectedOlt == 'olt-2' ? 'selected' : ''; ?>>ZTE C300 (Samudra Indah - OLT 02)</option>
+                        <option value="olt-3" <?= $selectedOlt == 'olt-3' ? 'selected' : ''; ?>>HIOSO (Samudra Indah - OLT 03)</option>
                     </select>
                     <button class="btn btn-primary btn-sm" onclick="location.reload();">
                         <i class="fa fa-refresh"></i> Refresh
@@ -26,26 +47,26 @@
                 <div class="row mb-4">
                     <div class="col-3 col-box-6">
                         <div class="box bg-blue bmh-75">
-                            <h1>96</h1>
+                            <h1><?= $totalOnu; ?></h1>
                             <div>Total ONU / ONT</div>
                         </div>
                     </div>
                     <div class="col-3 col-box-6">
                         <div class="box bg-green bmh-75">
-                            <h1>88</h1>
+                            <h1><?= $onlineOnu; ?></h1>
                             <div>ONT Online</div>
                         </div>
                     </div>
                     <div class="col-3 col-box-6">
                         <div class="box bg-red bmh-75">
-                            <h1>5</h1>
+                            <h1><?= $losOnu; ?></h1>
                             <div>ONT LOS (Loss of Signal)</div>
                         </div>
                     </div>
                     <div class="col-3 col-box-6">
                         <div class="box bg-yellow bmh-75">
-                            <h1>3</h1>
-                            <div>ONT Offline</div>
+                            <h1><?= $warningOnu; ?></h1>
+                            <div>ONT Warning / Offline</div>
                         </div>
                     </div>
                 </div>
@@ -76,6 +97,16 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <?php if ($selectedOlt === 'olt-3'): ?>
+                                <tr>
+                                    <td>PON 1</td>
+                                    <td>EPON 4 Port</td>
+                                    <td>2 ONUs</td>
+                                    <td>15 Mbps</td>
+                                    <td>45 Mbps</td>
+                                    <td><span class="badge bg-green">Active</span></td>
+                                </tr>
+                                <?php else: ?>
                                 <tr>
                                     <td>GPON 1/1/1</td>
                                     <td>GTGO (8 Port)</td>
@@ -92,22 +123,7 @@
                                     <td>290 Mbps</td>
                                     <td><span class="badge bg-green">Active</span></td>
                                 </tr>
-                                <tr>
-                                    <td>GPON 1/1/3</td>
-                                    <td>GTGO (8 Port)</td>
-                                    <td>36 ONUs</td>
-                                    <td>150 Mbps</td>
-                                    <td>420 Mbps</td>
-                                    <td><span class="badge bg-green">Active</span></td>
-                                </tr>
-                                <tr>
-                                    <td>GPON 1/1/4</td>
-                                    <td>GTGO (8 Port)</td>
-                                    <td>0 ONUs</td>
-                                    <td>0 Mbps</td>
-                                    <td>0 Mbps</td>
-                                    <td><span class="badge bg-yellow">Empty</span></td>
-                                </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -116,7 +132,7 @@
                 <!-- Detailed ONT List -->
                 <div class="card" style="border: 1px solid #ddd;">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <strong><i class="fa fa-list"></i> Daftar ONT Terdaftar (ZTE C320)</strong>
+                        <strong><i class="fa fa-list"></i> Daftar ONT Terdaftar</strong>
                         <input type="text" id="search-ont" class="form-control form-control-sm" placeholder="Cari SN / Nama / Pelanggan..." style="width: 250px;">
                     </div>
                     <div class="card-body p-0">
@@ -134,71 +150,37 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <?php foreach ($onuList as $onu): ?>
                                 <tr>
-                                    <td>1</td>
-                                    <td>1/1/1:1</td>
-                                    <td>Ali Jaya (alijaya)</td>
-                                    <td>ZTEG01A2B3C4</td>
-                                    <td><strong style="color: green;">-18.4 dBm</strong></td>
-                                    <td><span class="badge bg-green">Online</span></td>
-                                    <td>12 Hari, 04:30:12</td>
+                                    <td><?= $onu['no']; ?></td>
+                                    <td><?= $onu['port']; ?></td>
+                                    <td><?= htmlspecialchars($onu['name']); ?></td>
+                                    <td><?= htmlspecialchars($onu['sn']); ?></td>
                                     <td>
-                                        <button class="btn btn-xs btn-outline-primary" onclick="alert('Rebooting ONT ZTEG01A2B3C4...')"><i class="fa fa-refresh"></i> Reboot</button>
+                                        <?php if ($onu['signal'] === null): ?>
+                                            <strong style="color: red;">N/A</strong>
+                                        <?php else: ?>
+                                            <strong style="color: <?= $onu['signal'] < -27 ? 'red' : ($onu['signal'] < -25 ? 'orange' : 'green'); ?>;">
+                                                <?= $onu['signal']; ?> dBm
+                                            </strong>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($onu['status'] === 'Online'): ?>
+                                            <span class="badge bg-green">Online</span>
+                                        <?php elseif ($onu['status'] === 'LOS'): ?>
+                                            <span class="badge bg-red">LOS</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-yellow"><?= $onu['status']; ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= $onu['uptime']; ?></td>
+                                    <td>
+                                        <button class="btn btn-xs btn-outline-primary" onclick="alert('Rebooting ONT <?= htmlspecialchars($onu['sn']); ?>...')"><i class="fa fa-refresh"></i> Reboot</button>
                                         <button class="btn btn-xs btn-outline-info" onclick="alert('Menampilkan detail status ONT...')"><i class="fa fa-info-circle"></i> Info</button>
                                     </td>
                                 </tr>
-                                <tr>
-                                    <td>2</td>
-                                    <td>1/1/1:2</td>
-                                    <td>Budi Santoso (budis)</td>
-                                    <td>ZTEG01A2B3C5</td>
-                                    <td><strong style="color: green;">-21.2 dBm</strong></td>
-                                    <td><span class="badge bg-green">Online</span></td>
-                                    <td>05 Hari, 18:22:04</td>
-                                    <td>
-                                        <button class="btn btn-xs btn-outline-primary" onclick="alert('Rebooting ONT ZTEG01A2B3C5...')"><i class="fa fa-refresh"></i> Reboot</button>
-                                        <button class="btn btn-xs btn-outline-info" onclick="alert('Menampilkan detail status ONT...')"><i class="fa fa-info-circle"></i> Info</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>3</td>
-                                    <td>1/1/2:1</td>
-                                    <td>Cahaya Net (cahayanet)</td>
-                                    <td>ZTEG01A2B3C6</td>
-                                    <td><strong style="color: orange;">-26.8 dBm</strong></td>
-                                    <td><span class="badge bg-green">Online</span></td>
-                                    <td>02 Hari, 01:15:30</td>
-                                    <td>
-                                        <button class="btn btn-xs btn-outline-primary" onclick="alert('Rebooting ONT ZTEG01A2B3C6...')"><i class="fa fa-refresh"></i> Reboot</button>
-                                        <button class="btn btn-xs btn-outline-info" onclick="alert('Menampilkan detail status ONT...')"><i class="fa fa-info-circle"></i> Info</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>4</td>
-                                    <td>1/1/2:2</td>
-                                    <td>Deni Setiawan (denis)</td>
-                                    <td>ZTEG01A2B3C7</td>
-                                    <td><strong style="color: red;">-29.5 dBm</strong></td>
-                                    <td><span class="badge bg-yellow">Online (Warning)</span></td>
-                                    <td>00 Hari, 14:10:05</td>
-                                    <td>
-                                        <button class="btn btn-xs btn-outline-primary" onclick="alert('Rebooting ONT ZTEG01A2B3C7...')"><i class="fa fa-refresh"></i> Reboot</button>
-                                        <button class="btn btn-xs btn-outline-info" onclick="alert('Menampilkan detail status ONT...')"><i class="fa fa-info-circle"></i> Info</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>5</td>
-                                    <td>1/1/3:1</td>
-                                    <td>Eka Saputra (ekas)</td>
-                                    <td>ZTEG01A2B3C8</td>
-                                    <td><strong style="color: red;">N/A</strong></td>
-                                    <td><span class="badge bg-red">LOS (Loss of Signal)</span></td>
-                                    <td>Downtime: 03 Jam, 12:45</td>
-                                    <td>
-                                        <button class="btn btn-xs btn-outline-primary" disabled><i class="fa fa-refresh"></i> Reboot</button>
-                                        <button class="btn btn-xs btn-outline-info" onclick="alert('Menampilkan detail status ONT...')"><i class="fa fa-info-circle"></i> Info</button>
-                                    </td>
-                                </tr>
+                                <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
@@ -218,4 +200,8 @@ $(document).ready(function(){
         });
     });
 });
+
+function changeOlt(val) {
+    window.location.href = './?hotspot=olt-monitoring&session=<?= $_GET['session'] ?? ''; ?>&olt=' + val;
+}
 </script>

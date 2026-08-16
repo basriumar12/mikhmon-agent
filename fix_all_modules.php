@@ -1042,6 +1042,30 @@ END");
 logMessage('Triggers diperbarui', 'ok');
 
 /**
+ * 5b. Tambahan Fitur Gold (Inventory, Tiket, OLT, Side Map)
+ */
+logMessage('--- Memastikan struktur Fitur Gold ---');
+ensureColumn($pdo, 'billing_customers', 'latitude', 'VARCHAR(50) DEFAULT NULL', 'address');
+ensureColumn($pdo, 'billing_customers', 'longitude', 'VARCHAR(50) DEFAULT NULL', 'latitude');
+
+$goldSqlFile = __DIR__ . '/database/create_gold_tables.sql';
+if (file_exists($goldSqlFile)) {
+    $sql = file_get_contents($goldSqlFile);
+    $statements = explode(';', $sql);
+    foreach ($statements as $statement) {
+        $statement = trim($statement);
+        if (!empty($statement)) {
+            try {
+                $pdo->exec($statement);
+            } catch (PDOException $e) {
+                // Ignore key errors or existing data
+            }
+        }
+    }
+    logMessage('Database Fitur Gold disinkronisasi', 'ok');
+}
+
+/**
  * 6. Global Collation Fix (Obat Kuat)
  * Pastikan semua tabel (termasuk yang sudah ada sebelumnya) menggunakan utf8mb4_unicode_ci
  */

@@ -21,15 +21,25 @@ set_time_limit(600);
 
 try {
     $pdo = getDBConnection();
-    if (!$pdo) {
-        exit("Gagal konek database: getDBConnection returned false.\n");
-    }
 } catch (Throwable $e) {
     exit("Gagal konek database: " . $e->getMessage() . "\n");
 }
 
+if (!$pdo) {
+    exit("Gagal konek database: getDBConnection returned false.\n");
+}
+
 /** @var PDO $pdo */
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Ensure database exists and is selected (for fresh install)
+try {
+    $dbName = defined('DB_NAME') ? DB_NAME : 'mikhmon_agents';
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$dbName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $pdo->exec("USE `{$dbName}`");
+} catch (PDOException $e) {
+    exit("Gagal membuat/memilih database: " . $e->getMessage() . "\n");
+}
 
 function logMessage(string $message, string $status = 'info'): void
 {
@@ -163,7 +173,7 @@ CREATE TABLE `agents` (
   UNIQUE KEY `unique_agent_code` (`agent_code`),
   KEY `idx_agent_code` (`agent_code`),
   KEY `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'agent_settings' => <<<SQL
 CREATE TABLE `agent_settings` (
@@ -178,7 +188,7 @@ CREATE TABLE `agent_settings` (
   `updated_by` VARCHAR(50),
   CONSTRAINT `fk_agent_settings_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
   UNIQUE KEY `unique_agent_setting` (`agent_id`, `setting_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'agent_prices' => <<<SQL
 CREATE TABLE `agent_prices` (
@@ -192,7 +202,7 @@ CREATE TABLE `agent_prices` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_agent_prices_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
   UNIQUE KEY `unique_agent_profile` (`agent_id`, `profile_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'agent_transactions' => <<<SQL
 CREATE TABLE `agent_transactions` (
@@ -215,7 +225,67 @@ CREATE TABLE `agent_transactions` (
   CONSTRAINT `fk_agent_transactions_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
   INDEX `idx_agent_date` (`agent_id`, `created_at`),
   INDEX `idx_reference` (`reference_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+    'agent_vouchers' => <<<SQL
+CREATE TABLE `agent_vouchers` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `agent_id` INT NOT NULL,
+  `transaction_id` INT DEFAULT NULL,
+  `username` VARCHAR(100) NOT NULL,
+  `password` VARCHAR(100) NOT NULL,
+  `profile_name` VARCHAR(100) NOT NULL,
+  `buy_price` DECIMAL(15,2) NOT NULL,
+  `sell_price` DECIMAL(15,2) DEFAULT NULL,
+  `status` ENUM('active','used','expired','deleted') DEFAULT 'active',
+  `customer_phone` VARCHAR(20) DEFAULT NULL,
+  `customer_name` VARCHAR(100) DEFAULT NULL,
+  `sent_via` ENUM('web','whatsapp','manual') DEFAULT 'web',
+  `sent_at` TIMESTAMP NULL DEFAULT NULL,
+  `used_at` TIMESTAMP NULL DEFAULT NULL,
+  `expired_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `notes` TEXT DEFAULT NULL,
+  CONSTRAINT `fk_agent_vouchers_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_agent_id` (`agent_id`),
+  INDEX `idx_transaction_id` (`transaction_id`),
+  INDEX `idx_username` (`username`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_customer_phone` (`customer_phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+    'agent_commissions' => <<<SQL
+CREATE TABLE `agent_commissions` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `agent_id` INT NOT NULL,
+  `voucher_id` INT UNSIGNED DEFAULT NULL,
+  `commission_amount` DECIMAL(15,2) NOT NULL,
+  `commission_percent` DECIMAL(5,2) NOT NULL,
+  `voucher_price` DECIMAL(15,2) NOT NULL,
+  `status` ENUM('pending','paid','cancelled') DEFAULT 'pending',
+  `earned_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `paid_at` TIMESTAMP NULL DEFAULT NULL,
+  `notes` TEXT DEFAULT NULL,
+  CONSTRAINT `fk_agent_commissions_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_agent_id` (`agent_id`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_voucher_id` (`voucher_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+    'agent_billing_payments' => <<<SQL
+CREATE TABLE `agent_billing_payments` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `agent_id` INT NOT NULL,
+  `invoice_id` BIGINT UNSIGNED NOT NULL,
+  `amount` DECIMAL(15,2) NOT NULL,
+  `fee` DECIMAL(15,2) DEFAULT 0.00,
+  `status` ENUM('paid','refunded') DEFAULT 'paid',
+  `processed_by` VARCHAR(50) DEFAULT 'system',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_agent_billing_payments_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
+  INDEX `idx_agent_id` (`agent_id`),
+  INDEX `idx_invoice_id` (`invoice_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'payment_gateway_config' => <<<SQL
 CREATE TABLE `payment_gateway_config` (
@@ -231,7 +301,7 @@ CREATE TABLE `payment_gateway_config` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `unique_gateway` (`gateway_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'agent_profile_pricing' => <<<SQL
 CREATE TABLE `agent_profile_pricing` (
@@ -252,7 +322,7 @@ CREATE TABLE `agent_profile_pricing` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_agent_profile_pricing_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE,
   UNIQUE KEY `unique_agent_profile` (`agent_id`, `profile_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'public_sales' => <<<SQL
 CREATE TABLE `public_sales` (
@@ -295,7 +365,7 @@ CREATE TABLE `public_sales` (
   INDEX `idx_status` (`status`),
   INDEX `idx_customer_phone` (`customer_phone`),
   INDEX `idx_created_at` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'payment_methods' => <<<SQL
 CREATE TABLE `payment_methods` (
@@ -319,7 +389,7 @@ CREATE TABLE `payment_methods` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `unique_gateway_method` (`gateway_name`, `method_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'voucher_settings' => <<<SQL
 CREATE TABLE `voucher_settings` (
@@ -329,7 +399,7 @@ CREATE TABLE `voucher_settings` (
   `description` TEXT,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'site_pages' => <<<SQL
 CREATE TABLE `site_pages` (
@@ -340,7 +410,7 @@ CREATE TABLE `site_pages` (
   `is_active` TINYINT(1) DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
 ];
 
@@ -369,8 +439,80 @@ foreach ($paymentColumns as $column => $definition) {
 if (!columnExists($pdo, 'agent_settings', 'agent_id')) {
     logMessage('Menambahkan kolom agent_settings.agent_id ...', 'warn');
     $pdo->exec("ALTER TABLE `agent_settings` ADD COLUMN `agent_id` INT NOT NULL DEFAULT 1 AFTER `id`");
-    $pdo->exec("ALTER TABLE `agent_settings` ADD CONSTRAINT `fk_agent_settings_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE");
     logMessage('Kolom agent_settings.agent_id ditambahkan', 'ok');
+}
+
+// Pastikan agents table ada dan memiliki data sebelum menambahkan constraint
+try {
+    // Cek apakah tabel agents ada
+    if (tableExists($pdo, 'agents')) {
+        // Cek apakah ada agent dalam tabel
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM agents");
+        $stmt->execute();
+        $agentCount = $stmt->fetchColumn();
+        
+        if ($agentCount > 0) {
+            // Cek apakah constraint sudah ada
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'agent_settings' AND CONSTRAINT_NAME = 'fk_agent_settings_agent'");
+            $stmt->execute();
+            $constraintExists = $stmt->fetchColumn();
+            
+            if (!$constraintExists) {
+                // Perbaiki data yang tidak valid sebelum menambahkan constraint
+                $stmt = $pdo->prepare("SELECT id FROM agents ORDER BY id LIMIT 1");
+                $stmt->execute();
+                $firstAgentId = $stmt->fetchColumn() ?: 1;
+                
+                $pdo->exec("UPDATE `agent_settings` SET `agent_id` = $firstAgentId WHERE `agent_id` IS NULL OR `agent_id` = 0 OR `agent_id` NOT IN (SELECT id FROM agents)");
+                
+                // Sekarang aman untuk menambahkan constraint
+                $pdo->exec("ALTER TABLE `agent_settings` ADD CONSTRAINT `fk_agent_settings_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE");
+                logMessage('Constraint fk_agent_settings_agent ditambahkan dengan aman', 'ok');
+            } else {
+                logMessage('Constraint fk_agent_settings_agent sudah ada', 'info');
+            }
+        } else {
+            logMessage('Tidak ada agent dalam tabel agents, melewati penambahan constraint', 'warn');
+        }
+    } else {
+        logMessage('Tabel agents tidak ditemukan, melewati penambahan constraint', 'warn');
+    }
+} catch (Exception $e) {
+    logMessage('Gagal menambahkan constraint fk_agent_settings_agent: ' . $e->getMessage(), 'error');
+}
+
+// Memastikan kolom setting_type dan description ada
+ensureColumn($pdo, 'agent_settings', 'setting_type', "VARCHAR(20) DEFAULT 'string'", 'setting_value');
+ensureColumn($pdo, 'agent_settings', 'description', 'TEXT', 'setting_type');
+ensureColumn($pdo, 'agent_settings', 'updated_by', 'VARCHAR(50)', 'updated_at');
+
+// Menambahkan index untuk agent_id jika belum ada
+if (!indexExists($pdo, 'agent_settings', 'idx_agent_id')) {
+    logMessage('Menambahkan index untuk agent_settings.agent_id ...', 'warn');
+    $pdo->exec("ALTER TABLE `agent_settings` ADD INDEX `idx_agent_id` (`agent_id`)");
+    logMessage('Index agent_settings.agent_id ditambahkan', 'ok');
+}
+
+// Memastikan foreign key untuk agent_id
+$foreignKeyExists = false;
+try {
+    $fkCheck = $pdo->query("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'agent_settings' 
+        AND COLUMN_NAME = 'agent_id' 
+        AND REFERENCED_TABLE_NAME = 'agents'");
+    $foreignKeyExists = (bool)$fkCheck->fetch();
+} catch (Exception $e) {
+    // Abaikan error
+}
+
+if (!$foreignKeyExists) {
+    logMessage('Memastikan foreign key untuk agent_settings.agent_id ...', 'warn');
+    // Hapus constraint lama jika ada
+    $pdo->exec("ALTER TABLE `agent_settings` DROP FOREIGN KEY IF EXISTS `fk_agent_settings_agent`");
+    // Tambahkan constraint baru
+    $pdo->exec("ALTER TABLE `agent_settings` ADD CONSTRAINT `fk_agent_settings_agent` FOREIGN KEY (`agent_id`) REFERENCES `agents`(`id`) ON DELETE CASCADE");
+    logMessage('Foreign key agent_settings.agent_id diperbarui', 'ok');
 }
 
 /**
@@ -396,15 +538,41 @@ $defaultAgentSettings = [
     ['agent_id' => $agentDemoId, 'key' => 'voucher_prefix_agent', 'value' => 'AG'],
     ['agent_id' => $agentDemoId, 'key' => 'whatsapp_gateway_url', 'value' => 'https://api.whatsapp.com'],
     ['agent_id' => $agentDemoId, 'key' => 'whatsapp_token', 'value' => ''],
+    // WhatsApp API settings for VoucherGenerator (PUBLIC VOUCHER)
+    ['agent_id' => $agentDemoId, 'key' => 'whatsapp_api_url', 'value' => 'https://api.fonnte.com/send', 'type' => 'string', 'description' => 'WhatsApp API Gateway URL for public voucher delivery'],
+    ['agent_id' => $agentDemoId, 'key' => 'whatsapp_api_key', 'value' => '', 'type' => 'string', 'description' => 'WhatsApp API Key/Token - MUST BE CONFIGURED!'],
+    // Digiflazz settings
+    ['agent_id' => $agentDemoId, 'key' => 'digiflazz_enabled', 'value' => '0'],
+    ['agent_id' => $agentDemoId, 'key' => 'digiflazz_username', 'value' => ''],
+    ['agent_id' => $agentDemoId, 'key' => 'digiflazz_api_key', 'value' => ''],
+    ['agent_id' => $agentDemoId, 'key' => 'digiflazz_is_production', 'value' => '0'],
+    ['agent_id' => $agentDemoId, 'key' => 'default_markup_nominal', 'value' => '300'],
+    // Voucher settings
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_username_password_same', 'value' => '0', 'type' => 'boolean', 'description' => 'Username dan password sama atau berbeda'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_username_type', 'value' => 'alphanumeric', 'type' => 'string', 'description' => 'Tipe karakter username: numeric, alpha, alphanumeric'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_username_length', 'value' => '8', 'type' => 'number', 'description' => 'Panjang karakter username'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_password_type', 'value' => 'alphanumeric', 'type' => 'string', 'description' => 'Tipe karakter password: numeric, alpha, alphanumeric'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_password_length', 'value' => '6', 'type' => 'number', 'description' => 'Panjang karakter password'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_prefix_enabled', 'value' => '1', 'type' => 'boolean', 'description' => 'Gunakan prefix untuk username'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_prefix', 'value' => 'AG', 'type' => 'string', 'description' => 'Prefix untuk username'],
+    ['agent_id' => $agentDemoId, 'key' => 'voucher_uppercase', 'value' => '1', 'type' => 'boolean', 'description' => 'Gunakan huruf kapital'],
+    // Payment information
+    ['agent_id' => $agentDemoId, 'key' => 'payment_bank_name', 'value' => 'BCA', 'type' => 'string', 'description' => 'Nama Bank'],
+    ['agent_id' => $agentDemoId, 'key' => 'payment_account_number', 'value' => '1234567890', 'type' => 'string', 'description' => 'Nomor Rekening'],
+    ['agent_id' => $agentDemoId, 'key' => 'payment_account_name', 'value' => 'Nama Pemilik', 'type' => 'string', 'description' => 'Nama Pemilik Rekening'],
+    ['agent_id' => $agentDemoId, 'key' => 'payment_wa_confirm', 'value' => '08123456789', 'type' => 'string', 'description' => 'Nomor WhatsApp Konfirmasi'],
 ];
 
-$settingStmt = $pdo->prepare("INSERT INTO agent_settings (agent_id, setting_key, setting_value) VALUES (:agent, :key, :value)
-    ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+
+$settingStmt = $pdo->prepare("INSERT INTO agent_settings (agent_id, setting_key, setting_value, setting_type, description) VALUES (:agent, :key, :value, :type, :description)
+    ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), setting_type = VALUES(setting_type), description = VALUES(description)");
 foreach ($defaultAgentSettings as $row) {
     $settingStmt->execute([
         ':agent' => $row['agent_id'],
         ':key' => $row['key'],
         ':value' => $row['value'],
+        ':type' => $row['type'] ?? 'string',
+        ':description' => $row['description'] ?? ''
     ]);
 }
 logMessage('Agent settings baseline diperbarui', 'ok');
@@ -476,6 +644,16 @@ $pdo->exec("INSERT INTO payment_gateway_config (gateway_name, is_active, is_sand
     ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), is_sandbox = VALUES(is_sandbox)");
 logMessage('Payment gateway config Tripay dipastikan ada', 'ok');
 
+$pdo->exec("INSERT INTO payment_gateway_config (gateway_name, is_active, is_sandbox)
+    VALUES ('sumopod', 0, 1)
+    ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), is_sandbox = VALUES(is_sandbox)");
+logMessage('Payment gateway config Sumopod dipastikan ada', 'ok');
+
+$pdo->exec("INSERT INTO payment_methods (gateway_name, method_code, method_name, method_type, name, type, display_name, icon, admin_fee_type, admin_fee_value, min_amount, max_amount, is_active, sort_order)
+    VALUES ('sumopod', 'qris', 'QRIS Sumopod', 'qris', 'QRIS Sumopod', 'qris', 'QRIS Sumopod', 'fa-qrcode', 'fixed', 300, 1000, 10000000, 1, 1)
+    ON DUPLICATE KEY UPDATE method_name = VALUES(method_name), is_active = VALUES(is_active)");
+logMessage('Payment method QRIS Sumopod dipastikan ada', 'ok');
+
 $pdo->exec("INSERT IGNORE INTO site_pages (page_slug, page_title, page_content) VALUES
     ('tos', 'Syarat dan Ketentuan', '<h3>Syarat dan Ketentuan</h3><p>Sesuaikan konten ini.</p>'),
     ('privacy', 'Kebijakan Privasi', '<h3>Kebijakan Privasi</h3><p>Sesuaikan konten ini.</p>'),
@@ -502,6 +680,29 @@ CREATE TABLE `billing_portal_otps` (
   PRIMARY KEY (`id`),
   KEY `idx_customer_identifier` (`customer_id`, `identifier`),
   KEY `idx_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+    'digiflazz_products' => <<<SQL
+CREATE TABLE `digiflazz_products` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `buyer_sku_code` VARCHAR(50) NOT NULL,
+  `product_name` VARCHAR(150) NOT NULL,
+  `brand` VARCHAR(100) DEFAULT NULL,
+  `category` VARCHAR(50) DEFAULT NULL,
+  `type` ENUM('prepaid','postpaid') DEFAULT 'prepaid',
+  `price` INT NOT NULL,
+  `buyer_price` INT DEFAULT NULL,
+  `seller_price` INT DEFAULT NULL,
+  `status` ENUM('active','inactive') DEFAULT 'active',
+  `desc_header` VARCHAR(150) DEFAULT NULL,
+  `desc_footer` TEXT DEFAULT NULL,
+  `icon_url` VARCHAR(255) DEFAULT NULL,
+  `allow_markup` TINYINT(1) DEFAULT 1,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `unique_buyer_sku` (`buyer_sku_code`),
+  INDEX `idx_brand` (`brand`),
+  INDEX `idx_category` (`category`),
+  INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
     'digiflazz_transactions' => <<<SQL
@@ -551,10 +752,12 @@ CREATE TABLE `billing_customers` (
   `email` VARCHAR(150) DEFAULT NULL,
   `address` TEXT DEFAULT NULL,
   `service_number` VARCHAR(100) DEFAULT NULL,
+  `router_session` VARCHAR(100) DEFAULT NULL,
   `billing_day` TINYINT UNSIGNED NOT NULL DEFAULT 1,
   `status` ENUM('active','inactive') NOT NULL DEFAULT 'active',
   `is_isolated` TINYINT(1) NOT NULL DEFAULT 0,
   `next_isolation_date` DATE DEFAULT NULL,
+  `auto_isolation` TINYINT(1) NOT NULL DEFAULT 1,
   `genieacs_match_mode` ENUM('device_id','phone_tag','pppoe_username') NOT NULL DEFAULT 'device_id',
   `genieacs_pppoe_username` VARCHAR(191) DEFAULT NULL,
   `notes` TEXT DEFAULT NULL,
@@ -638,6 +841,7 @@ ensureColumn($pdo, 'digiflazz_transactions', 'whatsapp_notified', 'TINYINT(1) NO
 
 // Genap periksa kolom penting billing_customers
 ensureColumn($pdo, 'billing_customers', 'service_number', 'VARCHAR(100) DEFAULT NULL', 'address');
+ensureColumn($pdo, 'billing_customers', 'router_session', 'VARCHAR(100) DEFAULT NULL', 'service_number');
 ensureColumn($pdo, 'billing_customers', 'genieacs_match_mode', "ENUM('device_id','phone_tag','pppoe_username') NOT NULL DEFAULT 'device_id'", 'service_number');
 ensureColumn($pdo, 'billing_customers', 'genieacs_pppoe_username', 'VARCHAR(191) DEFAULT NULL', 'genieacs_match_mode');
 ensureColumn($pdo, 'billing_customers', 'is_isolated', 'TINYINT(1) NOT NULL DEFAULT 0', 'status');
@@ -652,6 +856,9 @@ ensureColumn($pdo, 'billing_invoices', 'paid_via', 'VARCHAR(50) DEFAULT NULL', '
 ensureColumn($pdo, 'billing_invoices', 'paid_via_agent_id', 'INT UNSIGNED DEFAULT NULL', 'paid_via');
 ensureColumn($pdo, 'billing_invoices', 'whatsapp_sent_at', 'DATETIME DEFAULT NULL', 'reference_number');
 ensureIndex($pdo, 'billing_invoices', 'uniq_customer_period', 'UNIQUE KEY `uniq_customer_period` (`customer_id`,`period`)');
+
+// Tambahkan kolom auto_isolation ke billing_customers
+ensureColumn($pdo, 'billing_customers', 'auto_isolation', 'TINYINT(1) NOT NULL DEFAULT 1', 'next_isolation_date');
 
 // Pastikan billing_logs table referensinya tersedia
 ensureIndex($pdo, 'billing_logs', 'idx_invoice_id', 'KEY `idx_invoice_id` (`invoice_id`)');
@@ -690,7 +897,188 @@ foreach ($billingDefaults as $key => $value) {
 logMessage('Billing settings dasar diperbarui', 'ok');
 
 /**
- * 5. Ringkasan
+ * 4.5. Views, Procedures & Triggers (Advanced)
+ */
+logMessage('--- Memastikan Views, Procedures & Triggers ---');
+
+// Views
+$pdo->exec("CREATE OR REPLACE VIEW agent_summary AS
+SELECT 
+    a.id,
+    a.agent_code,
+    a.agent_name,
+    a.phone,
+    a.balance,
+    a.status,
+    a.level,
+    COUNT(DISTINCT av.id) as total_vouchers,
+    COUNT(DISTINCT CASE WHEN av.status = 'used' THEN av.id END) as used_vouchers,
+    SUM(CASE WHEN at.transaction_type = 'topup' THEN at.amount ELSE 0 END) as total_topup,
+    SUM(CASE WHEN at.transaction_type = 'generate' THEN at.amount ELSE 0 END) as total_spent,
+    COALESCE(SUM(ac.commission_amount), 0) as total_commission,
+    a.created_at,
+    a.last_login
+FROM agents a
+LEFT JOIN agent_vouchers av ON a.id = av.agent_id
+LEFT JOIN agent_transactions at ON a.id = at.agent_id
+LEFT JOIN agent_commissions ac ON a.id = ac.agent_id AND ac.status = 'paid'
+GROUP BY a.id");
+
+$pdo->exec("CREATE OR REPLACE VIEW daily_agent_sales AS
+SELECT 
+    DATE(av.created_at) as sale_date,
+    a.agent_code,
+    a.agent_name,
+    av.profile_name,
+    COUNT(*) as voucher_count,
+    SUM(av.buy_price) as total_buy_price,
+    SUM(av.sell_price) as total_sell_price,
+    SUM(av.sell_price - av.buy_price) as total_profit
+FROM agent_vouchers av
+JOIN agents a ON av.agent_id = a.id
+WHERE av.status != 'deleted'
+GROUP BY DATE(av.created_at), a.id, av.profile_name");
+
+logMessage('Views reporting diperbarui', 'ok');
+
+// Procedures
+$pdo->exec("DROP PROCEDURE IF EXISTS topup_agent_balance");
+$pdo->exec("CREATE PROCEDURE topup_agent_balance(
+    IN p_agent_id INT,
+    IN p_amount DECIMAL(15,2),
+    IN p_description TEXT,
+    IN p_created_by VARCHAR(50)
+)
+BEGIN
+    DECLARE v_balance_before DECIMAL(15,2);
+    DECLARE v_balance_after DECIMAL(15,2);
+    
+    SELECT balance INTO v_balance_before FROM agents WHERE id = p_agent_id;
+    SET v_balance_after = v_balance_before + p_amount;
+    
+    UPDATE agents SET balance = v_balance_after WHERE id = p_agent_id;
+    
+    INSERT INTO agent_transactions (
+        agent_id, transaction_type, amount, 
+        balance_before, balance_after, 
+        description, created_by
+    ) VALUES (
+        p_agent_id, 'topup', p_amount,
+        v_balance_before, v_balance_after,
+        p_description, p_created_by
+    );
+END");
+
+$pdo->exec("DROP PROCEDURE IF EXISTS deduct_agent_balance");
+$pdo->exec("CREATE PROCEDURE deduct_agent_balance(
+    IN p_agent_id INT,
+    IN p_amount DECIMAL(15,2),
+    IN p_profile_name VARCHAR(100),
+    IN p_username VARCHAR(100),
+    IN p_description TEXT,
+    OUT p_success BOOLEAN,
+    OUT p_message VARCHAR(255)
+)
+BEGIN
+    DECLARE v_balance_before DECIMAL(15,2);
+    DECLARE v_balance_after DECIMAL(15,2);
+    
+    SELECT balance INTO v_balance_before FROM agents WHERE id = p_agent_id;
+    
+    IF v_balance_before < p_amount THEN
+        SET p_success = FALSE;
+        SET p_message = 'Saldo tidak mencukupi';
+    ELSE
+        SET v_balance_after = v_balance_before - p_amount;
+        UPDATE agents SET balance = v_balance_after WHERE id = p_agent_id;
+        
+        INSERT INTO agent_transactions (
+            agent_id, transaction_type, amount,
+            balance_before, balance_after,
+            profile_name, voucher_username,
+            description
+        ) VALUES (
+            p_agent_id, 'generate', p_amount,
+            v_balance_before, v_balance_after,
+            p_profile_name, p_username,
+            p_description
+        );
+        
+        SET p_success = TRUE;
+        SET p_message = 'Saldo berhasil dipotong';
+    END IF;
+END");
+
+logMessage('Stored Procedures diperbarui', 'ok');
+
+// Triggers
+$pdo->exec("DROP TRIGGER IF EXISTS after_agent_voucher_insert");
+$pdo->exec("CREATE TRIGGER after_agent_voucher_insert
+AFTER INSERT ON agent_vouchers
+FOR EACH ROW
+BEGIN
+    DECLARE v_commission_enabled BOOLEAN;
+    DECLARE v_commission_percent DECIMAL(5,2);
+    
+    SELECT CAST(setting_value AS UNSIGNED) INTO v_commission_enabled
+    FROM agent_settings WHERE setting_key = 'commission_enabled';
+    
+    IF v_commission_enabled THEN
+        SELECT commission_percent INTO v_commission_percent
+        FROM agents WHERE id = NEW.agent_id;
+        
+        IF v_commission_percent > 0 AND NEW.sell_price IS NOT NULL THEN
+            INSERT INTO agent_commissions (
+                agent_id, voucher_id, commission_amount,
+                commission_percent, voucher_price
+            ) VALUES (
+                NEW.agent_id, NEW.id, (NEW.sell_price * v_commission_percent / 100),
+                v_commission_percent, NEW.sell_price
+            );
+        END IF;
+    END IF;
+END");
+
+logMessage('Triggers diperbarui', 'ok');
+
+/**
+ * 5b. Tambahan Fitur Gold (Inventory, Tiket, OLT, Side Map)
+ */
+logMessage('--- Memastikan struktur Fitur Gold ---');
+ensureColumn($pdo, 'billing_customers', 'latitude', 'VARCHAR(50) DEFAULT NULL', 'address');
+ensureColumn($pdo, 'billing_customers', 'longitude', 'VARCHAR(50) DEFAULT NULL', 'latitude');
+
+$goldSqlFile = __DIR__ . '/../database/create_gold_tables.sql';
+if (file_exists($goldSqlFile)) {
+    $sql = file_get_contents($goldSqlFile);
+    $statements = explode(';', $sql);
+    foreach ($statements as $statement) {
+        $statement = trim($statement);
+        if (!empty($statement)) {
+            try {
+                $pdo->exec($statement);
+            } catch (PDOException $e) {
+                // Ignore key errors or existing data
+            }
+        }
+    }
+    logMessage('Database Fitur Gold disinkronisasi', 'ok');
+}
+
+/**
+ * 6. Global Collation Fix (Obat Kuat)
+ * Pastikan semua tabel (termasuk yang sudah ada sebelumnya) menggunakan utf8mb4_unicode_ci
+ */
+logMessage('--- Menyamakan Collation Semua Tabel ---');
+$allTables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_COLUMN);
+foreach ($allTables as $tbl) {
+    // Skip jika tabel bukan bagian dari sistem ini (opsional, tapi aman untuk semua)
+    $pdo->exec("ALTER TABLE `{$tbl}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+}
+logMessage('Semua tabel dikonversi ke utf8mb4_unicode_ci', 'ok');
+
+/**
+ * 7. Ringkasan
  */
 logMessage('=== Perbaikan selesai ===', 'ok');
 
