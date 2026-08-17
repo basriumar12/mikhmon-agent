@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'api/webhook/sumopod',
+            'mikhmon/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
