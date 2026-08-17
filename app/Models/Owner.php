@@ -5,10 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 
-class Owner extends Authenticatable
+class Owner extends Authenticatable implements FilamentUser, HasName
 {
     use HasFactory, Notifiable;
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $panel->getId() === 'owner';
+    }
+
+    public function getFilamentName(): string
+    {
+        return $this->username;
+    }
 
     protected $table = 'owners';
 
