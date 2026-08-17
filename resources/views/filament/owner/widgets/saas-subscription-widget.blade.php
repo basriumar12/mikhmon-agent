@@ -4,30 +4,197 @@
     $currentStatus = $owner->status ?? 'inactive';
 @endphp
 
-<div class="fi-wi-stats-overview-stat-keyboard-actions">
-    <!-- Header Summary -->
-    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-2xl p-6 shadow-lg mb-6">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<style>
+    .saas-widget-container {
+        font-family: inherit;
+    }
+    .saas-header-card {
+        background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 24px;
+    }
+    .saas-header-card h2 {
+        color: white !important;
+        font-size: 28px;
+        font-weight: 800;
+        margin: 4px 0 12px 0;
+        line-height: 1.2;
+    }
+    .saas-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-right: 8px;
+        color: white !important;
+    }
+    .saas-mikhmon-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #10b981;
+        color: white !important;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        text-decoration: none;
+        transition: background 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .saas-mikhmon-btn:hover {
+        background: #059669;
+    }
+    .saas-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    @media (min-width: 768px) {
+        .saas-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    .saas-plan-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        color: #1f2937 !important; /* Dark text for light theme */
+        position: relative;
+    }
+    .dark .saas-plan-card {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f3f4f6 !important; /* Light text for dark theme */
+    }
+    .saas-plan-card.active {
+        border: 2px solid #4f46e5;
+    }
+    .saas-plan-badge {
+        background: #4f46e5;
+        color: white !important;
+        text-align: center;
+        padding: 4px 0;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: -24px -24px 20px -24px;
+    }
+    .saas-plan-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+    }
+    .saas-plan-desc {
+        font-size: 13px;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+    .dark .saas-plan-desc {
+        color: #9ca3af;
+    }
+    .saas-plan-price {
+        font-size: 32px;
+        font-weight: 800;
+        margin-top: 16px;
+        display: flex;
+        align-items: baseline;
+    }
+    .saas-plan-price span {
+        font-size: 14px;
+        font-weight: 500;
+        color: #6b7280;
+        margin-left: 4px;
+    }
+    .dark .saas-plan-price span {
+        color: #9ca3af;
+    }
+    .saas-plan-features {
+        margin: 24px 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .saas-plan-features li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+    }
+    .saas-plan-features svg {
+        width: 16px;
+        height: 16px;
+        color: #10b981;
+        flex-shrink: 0;
+    }
+    .saas-button {
+        display: block;
+        width: 100%;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        text-align: center;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .saas-button-primary {
+        background: #4f46e5;
+        color: white !important;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+    }
+    .saas-button-primary:hover {
+        background: #4338ca;
+    }
+    .saas-button-disabled {
+        background: #f3f4f6;
+        color: #9ca3af !important;
+        cursor: default;
+    }
+    .dark .saas-button-disabled {
+        background: #374151;
+        color: #6b7280 !important;
+    }
+</style>
+
+<div class="saas-widget-container">
+    <!-- Header Summary Card -->
+    <div class="saas-header-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div>
-                <p class="text-sm opacity-90 uppercase tracking-wider font-semibold">Status Langganan Anda</p>
-                <h2 class="text-3xl font-extrabold mt-1">
+                <p style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.9; margin: 0;">Status Langganan Anda</p>
+                <h2>
                     Samudra Net - 
                     @if($currentLevel == 'bronze') Free Trial @elseif($currentLevel == 'silver') Silver Plan @elseif($currentLevel == 'gold') Gold Plan @elseif($currentLevel == 'platinum') Platinum Plan @endif
                 </h2>
-                <div class="flex items-center gap-3 mt-3">
-                    <span class="px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider">
-                        Level: {{ strtoupper($currentLevel) }}
-                    </span>
-                    <span class="px-3 py-1 bg-white/20 backdrop-blur rounded-full text-xs font-semibold uppercase tracking-wider">
-                        Status: {{ strtoupper($currentStatus) }}
-                    </span>
+                <div>
+                    <span class="saas-badge">Level: {{ strtoupper($currentLevel) }}</span>
+                    <span class="saas-badge">Status: {{ strtoupper($currentStatus) }}</span>
                 </div>
             </div>
             
-            <div class="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/20">
-                <p class="text-xs opacity-90">Koneksi Mikhmon Anda:</p>
-                <a href="/mikhmon/admin.php" target="_blank" class="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-bold text-sm transition shadow-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+            <div style="background: rgba(255, 255, 255, 0.1); padding: 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15);">
+                <p style="font-size: 12px; margin: 0 0 8px 0; opacity: 0.9;">Koneksi Mikhmon Anda:</p>
+                <a href="/mikhmon/admin.php" target="_blank" class="saas-mikhmon-btn">
+                    <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     Buka Panel Mikhmon
                 </a>
             </div>
@@ -35,43 +202,42 @@
     </div>
 
     <!-- Pricing Upgrade Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="saas-grid">
         <!-- Silver Plan Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ $currentLevel == 'silver' ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-gray-200 dark:border-gray-700' }} overflow-hidden shadow-sm flex flex-col justify-between">
+        <div class="saas-plan-card {{ $currentLevel == 'silver' ? 'active' : '' }}">
             @if($currentLevel == 'silver')
-                <div class="bg-indigo-500 text-white text-center py-1 text-xs font-bold uppercase tracking-wider">Plan Aktif Anda</div>
+                <div class="saas-plan-badge">Plan Aktif Anda</div>
             @endif
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Silver Plan</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Cocok untuk jaringan RT RW Net pemula.</p>
-                <div class="mt-4 flex items-baseline">
-                    <span class="text-3xl font-extrabold text-gray-900 dark:text-white">Rp 50.000</span>
-                    <span class="text-gray-500 dark:text-gray-400 ml-1">/bulan</span>
+            <div>
+                <h3 class="saas-plan-title">Silver Plan</h3>
+                <p class="saas-plan-desc">Cocok untuk jaringan RT RW Net pemula.</p>
+                <div class="saas-plan-price">
+                    Rp 50.000<span>/bulan</span>
                 </div>
-                <ul class="mt-6 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <ul class="saas-plan-features">
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         2 Router MikroTik
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         2 OLT Monitoring
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         Support ZTE, HIOSO, dll.
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         400 Pelanggan
                     </li>
                 </ul>
             </div>
-            <div class="p-6 pt-0">
+            <div>
                 <form action="/owner/checkout" method="POST">
                     @csrf
                     <input type="hidden" name="plan" value="silver">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-center font-bold text-sm {{ $currentLevel == 'silver' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-default' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow transition' }}" {{ $currentLevel == 'silver' ? 'disabled' : '' }}>
+                    <button type="submit" class="saas-button {{ $currentLevel == 'silver' ? 'saas-button-disabled' : 'saas-button-primary' }}" {{ $currentLevel == 'silver' ? 'disabled' : '' }}>
                         {{ $currentLevel == 'silver' ? 'Aktif' : 'Pilih Plan / Perpanjang' }}
                     </button>
                 </form>
@@ -79,42 +245,40 @@
         </div>
 
         <!-- Gold Plan Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ $currentLevel == 'gold' ? 'border-yellow-500 ring-2 ring-yellow-500/50' : 'border-gray-200 dark:border-gray-700' }} overflow-hidden shadow-sm flex flex-col justify-between relative">
-            <div class="absolute top-0 right-0 bg-yellow-500 text-white px-3 py-1 rounded-bl-xl text-[10px] font-extrabold uppercase tracking-widest">Terpopuler</div>
+        <div class="saas-plan-card {{ $currentLevel == 'gold' ? 'active' : '' }}">
             @if($currentLevel == 'gold')
-                <div class="bg-yellow-500 text-white text-center py-1 text-xs font-bold uppercase tracking-wider">Plan Aktif Anda</div>
+                <div class="saas-plan-badge">Plan Aktif Anda</div>
             @endif
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Gold Plan</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Fitur lengkap untuk manajemen prima.</p>
-                <div class="mt-4 flex items-baseline">
-                    <span class="text-3xl font-extrabold text-gray-900 dark:text-white">Rp 100.000</span>
-                    <span class="text-gray-500 dark:text-gray-400 ml-1">/bulan</span>
+            <div>
+                <h3 class="saas-plan-title">Gold Plan</h3>
+                <p class="saas-plan-desc">Fitur lengkap untuk manajemen prima.</p>
+                <div class="saas-plan-price">
+                    Rp 100.000<span>/bulan</span>
                 </div>
-                <ul class="mt-6 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <ul class="saas-plan-features">
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         4 Router MikroTik
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         3 OLT Monitoring
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         GenieACS & 800 Pelanggan
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         WhatsApp Notifikasi Free
                     </li>
                 </ul>
             </div>
-            <div class="p-6 pt-0">
+            <div>
                 <form action="/owner/checkout" method="POST">
                     @csrf
                     <input type="hidden" name="plan" value="gold">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-center font-bold text-sm {{ $currentLevel == 'gold' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-default' : 'bg-yellow-600 hover:bg-yellow-700 text-white shadow transition' }}" {{ $currentLevel == 'gold' ? 'disabled' : '' }}>
+                    <button type="submit" class="saas-button {{ $currentLevel == 'gold' ? 'saas-button-disabled' : 'saas-button-primary' }}" {{ $currentLevel == 'gold' ? 'disabled' : '' }}>
                         {{ $currentLevel == 'gold' ? 'Aktif' : 'Pilih Plan / Perpanjang' }}
                     </button>
                 </form>
@@ -122,41 +286,40 @@
         </div>
 
         <!-- Platinum Plan Card -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ $currentLevel == 'platinum' ? 'border-emerald-500 ring-2 ring-emerald-500/50' : 'border-gray-200 dark:border-gray-700' }} overflow-hidden shadow-sm flex flex-col justify-between">
+        <div class="saas-plan-card {{ $currentLevel == 'platinum' ? 'active' : '' }}">
             @if($currentLevel == 'platinum')
-                <div class="bg-emerald-500 text-white text-center py-1 text-xs font-bold uppercase tracking-wider">Plan Aktif Anda</div>
+                <div class="saas-plan-badge">Plan Aktif Anda</div>
             @endif
-            <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Platinum Plan</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Tanpa batas untuk ISP berkembang.</p>
-                <div class="mt-4 flex items-baseline">
-                    <span class="text-3xl font-extrabold text-gray-900 dark:text-white">Rp 200.000</span>
-                    <span class="text-gray-500 dark:text-gray-400 ml-1">/bulan</span>
+            <div>
+                <h3 class="saas-plan-title">Platinum Plan</h3>
+                <p class="saas-plan-desc">Tanpa batas untuk ISP berkembang.</p>
+                <div class="saas-plan-price">
+                    Rp 200.000<span>/bulan</span>
                 </div>
-                <ul class="mt-6 space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <ul class="saas-plan-features">
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         Unlimited Router MikroTik
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         Unlimited OLT Monitoring
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         Unlimited Pelanggan
                     </li>
-                    <li class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         Sistem HRIS Absensi Wajah
                     </li>
                 </ul>
             </div>
-            <div class="p-6 pt-0">
+            <div>
                 <form action="/owner/checkout" method="POST">
                     @csrf
                     <input type="hidden" name="plan" value="platinum">
-                    <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-center font-bold text-sm {{ $currentLevel == 'platinum' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-default' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow transition' }}" {{ $currentLevel == 'platinum' ? 'disabled' : '' }}>
+                    <button type="submit" class="saas-button {{ $currentLevel == 'platinum' ? 'saas-button-disabled' : 'saas-button-primary' }}" {{ $currentLevel == 'platinum' ? 'disabled' : '' }}>
                         {{ $currentLevel == 'platinum' ? 'Aktif' : 'Pilih Plan / Perpanjang' }}
                     </button>
                 </form>
