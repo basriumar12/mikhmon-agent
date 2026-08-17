@@ -42,6 +42,12 @@ class CheckoutController extends Controller
         $successUrl = url('/owner');
         $cancelUrl = url('/owner');
 
+        // Bypass Sumopod redirect URL validation for local development domains
+        if (strpos($successUrl, '.test') !== false || strpos($successUrl, 'localhost') !== false || strpos($successUrl, '127.0.0.1') !== false) {
+            $successUrl = 'https://samudraindah.net/owner';
+            $cancelUrl = 'https://samudraindah.net/owner';
+        }
+
         $paymentResult = $this->sumopodService->createPayment(
             $orderId,
             $amount,
@@ -55,6 +61,12 @@ class CheckoutController extends Controller
             return redirect()->away($paymentLink);
         }
 
-        return redirect('/owner')->with('error', $paymentResult['message'] ?? 'Gagal membuat pembayaran ke gateway.');
+        \Filament\Notifications\Notification::make()
+            ->title('Gagal Membuat Pembayaran')
+            ->body($paymentResult['message'] ?? 'Gagal menghubungi payment gateway.')
+            ->danger()
+            ->send();
+
+        return redirect('/owner/subscription');
     }
 }
