@@ -270,7 +270,7 @@ class VoucherGenerator {
             $API = new RouterosAPI();
             $API->debug = false;
             
-            if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+            if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
                 throw new Exception('Failed to connect to MikroTik');
             }
             

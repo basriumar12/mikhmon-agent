@@ -91,7 +91,7 @@ if ($session) {
         $API = new RouterosAPI();
         $API->debug = false;
         
-        if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+        if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
             $profilesData = $API->comm("/ip/hotspot/user/profile/print");
             foreach ($profilesData as $profile) {
                 if (isset($profile['name'])) {

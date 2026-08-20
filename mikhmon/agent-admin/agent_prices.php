@@ -32,7 +32,7 @@ if ($session_name) {
     
     $API = new RouterosAPI();
     $API->debug = false;
-    if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         $profiles = $API->comm("/ip/hotspot/user/profile/print");
         $API->disconnect();
     }

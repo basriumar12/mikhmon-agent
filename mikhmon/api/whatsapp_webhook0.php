@@ -814,7 +814,7 @@ function purchaseVoucher($phone, $profileName, $mode = 'default', $customerPhone
     $API = new RouterosAPI();
     $API->debug = false;
     
-    $connectResult = $API->connect($iphost, $userhost, decrypt($passwdhost));
+    $connectResult = $API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost));
     
     if (!$connectResult) {
         $errorMsg = "❌ *GAGAL TERHUBUNG KE SERVER*\n\n";
@@ -1079,7 +1079,7 @@ function sendPriceList($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "Gagal terhubung ke server.");
         return;
     }
@@ -1160,7 +1160,7 @@ function addPPPoESecret($phone, $username, $password, $profile) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1230,7 +1230,7 @@ function editPPPoESecret($phone, $username, $newProfile) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1319,7 +1319,7 @@ function deletePPPoESecret($phone, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1377,7 +1377,7 @@ function checkMikroTikPing($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    $connected = $API->connect($iphost, explode('@|@', $data[$session][2])[1], decrypt(explode('#|#', $data[$session][3])[1]));
+    $connected = $API->connect($iphost, explode('@|@', $data[$session][2])[1], mikhmon_decrypt(explode('#|#', $data[$session][3])[1]));
     $endTime = microtime(true);
     $pingTime = round(($endTime - $startTime) * 1000, 2);
     
@@ -1431,7 +1431,7 @@ function checkMikroTikStatus($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1494,7 +1494,7 @@ function checkPPPoEActive($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1564,7 +1564,7 @@ function checkMikroTikResource($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1648,7 +1648,7 @@ function disablePPPoESecret($phone, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1717,7 +1717,7 @@ function enablePPPoESecret($phone, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1786,7 +1786,7 @@ function disableHotspotUser($phone, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1855,7 +1855,7 @@ function enableHotspotUser($phone, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -1924,7 +1924,7 @@ function checkPPPoEOffline($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -2704,7 +2704,7 @@ function findDeviceByPhoneOrUsername($phone, $query) {
         $API = new RouterosAPI();
         $API->debug = false;
         
-        if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+        if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
             sendWhatsAppMessage($phone, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
             return;
         }

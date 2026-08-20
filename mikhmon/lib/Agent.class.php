@@ -574,9 +574,9 @@ class Agent {
      * Get agent by phone or email
      */
     public function getAgentByPhoneOrEmail($identifier) {
-        $sql = "SELECT * FROM agents WHERE phone = :id OR email = :id";
+        $sql = "SELECT * FROM agents WHERE phone = :phone OR email = :email";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $identifier]);
+        $stmt->execute([':phone' => $identifier, ':email' => $identifier]);
         return $stmt->fetch();
     }
     

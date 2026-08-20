@@ -30,6 +30,31 @@ if (!isset($_SESSION["mikhmon"])) {
                 require_once(__DIR__ . '/../include/db_config.php');
             }
             $db = getDBConnection();
+
+            // Check owner plan and current router count
+            $stmt = $db->prepare("SELECT level FROM owners WHERE id = ?");
+            $stmt->execute([$_SESSION['owner_id']]);
+            $owner = $stmt->fetch();
+            $level = $owner ? $owner['level'] : 'bronze';
+
+            $quotas = [
+                'bronze' => 1,
+                'silver' => 2,
+                'gold' => 4,
+                'platinum' => 8,
+            ];
+            $quota = $quotas[$level] ?? 1;
+
+            $stmt = $db->prepare("SELECT COUNT(*) as total FROM router_sessions WHERE owner_id = ?");
+            $stmt->execute([$_SESSION['owner_id']]);
+            $countRes = $stmt->fetch();
+            $currentCount = $countRes ? (int)$countRes['total'] : 0;
+
+            if ($currentCount >= $quota) {
+                echo "<script>alert('Batas maksimal router untuk paket " . strtoupper($level) . " Anda adalah " . $quota . " router. Silakan lakukan upgrade.'); window.location='./admin.php?id=sessions';</script>";
+                exit;
+            }
+
             $stmt = $db->prepare("INSERT INTO router_sessions (owner_id, session_name, ip_address, username, password, live_report) VALUES (?, ?, '', '', '', 'disable')");
             $stmt->execute([$_SESSION['owner_id'], $router]);
         } catch (Exception $e) {}
@@ -54,7 +79,7 @@ if (!isset($_SESSION["mikhmon"])) {
   if (isset($_POST['save'])) {
     $siphost = (preg_replace('/\s+/', '', $_POST['ipmik']));
     $suserhost = ($_POST['usermik']);
-    $spasswdhost = encrypt($_POST['passmik']);
+    $spasswdhost = mikhmon_encrypt($_POST['passmik']);
     $shotspotname = str_replace("'","",$_POST['hotspotname']);
     $sdnsname = ($_POST['dnsname']);
     $scurrency = ($_POST['currency']);
@@ -169,7 +194,7 @@ if (!isset($_SESSION["mikhmon"])) {
 						<td class="align-middle">Password  </td><td>
 							<div class="input-group">
 								<div class="input-group-11 col-box-10">
-        						<input class="group-item group-item-l" id="passmk" type="password" name="passmik" title="Password MikroTik" value="<?= decrypt($passwdhost); ?>" required="1"/>
+        						<input class="group-item group-item-l" id="passmk" type="password" name="passmik" title="Password MikroTik" value="<?= mikhmon_decrypt($passwdhost); ?>" required="1"/>
         						</div>
             					<div class="input-group-1 col-box-2">
             						<div class="group-item group-item-r pd-2p5 text-center align-middle">

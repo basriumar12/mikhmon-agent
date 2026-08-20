@@ -358,7 +358,7 @@ function generateVoucherAgent($phone, $agentData, $profileName, $quantity) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ Gagal terhubung ke server. Coba lagi nanti.");
         return;
     }
@@ -474,7 +474,7 @@ function generateVoucherAdmin($phone, $profileName, $quantity) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ Gagal terhubung ke server.");
         return;
     }
@@ -928,7 +928,7 @@ function showAllPrices($phone) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendWhatsAppMessage($phone, "❌ Gagal terhubung ke server.");
         return;
     }

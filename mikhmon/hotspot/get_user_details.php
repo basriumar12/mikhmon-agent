@@ -32,7 +32,7 @@ if (empty($username)) {
 $API = new RouterosAPI();
 $API->debug = false;
 
-if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
     echo json_encode(['success' => false, 'message' => 'Failed to connect to MikroTik']);
     exit;
 }

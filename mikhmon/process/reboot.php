@@ -25,7 +25,7 @@ if (!isset($_SESSION["mikhmon"])) {
   if (isset($_POST['submit'])) {
     $API = new RouterosAPI();
     $API->debug = false;
-    if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
       $API->write('/system/reboot');
       $API->read();
     }

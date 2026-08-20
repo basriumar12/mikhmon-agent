@@ -19,6 +19,64 @@ session_start();
 // hide all error
 error_reporting(0);
 
+// Bootstrap Laravel to enable SSO (only if not already running inside Laravel)
+if (!function_exists('app')) {
+    try {
+        if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+            require_once __DIR__ . '/../vendor/autoload.php';
+            $app = require_once __DIR__ . '/../bootstrap/app.php';
+            $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+            $ssoRequest = Illuminate\Http\Request::create('/owner', 'GET', [], $_COOKIE, [], $_SERVER);
+            $kernel->handle($ssoRequest);
+            
+            // Restore error and exception handlers to avoid strict Laravel error handling in legacy script
+            restore_error_handler();
+            restore_exception_handler();
+        }
+    } catch (\Exception $e) {
+        // Ignore bootstrapping errors
+    }
+}
+
+// Automatically log in from Laravel session if authenticated
+if (!isset($_SESSION["mikhmon"]) && function_exists('auth') && auth('owners')->check()) {
+    $owner = auth('owners')->user();
+    $_SESSION["mikhmon"] = $owner->username;
+    $_SESSION["owner_id"] = $owner->id;
+    $_SESSION["owner_level"] = $owner->level;
+    $_SESSION["timezone"] = $owner->timezone ?? 'Asia/Jakarta';
+}
+
+// Check subscription expiration for active session on every page load
+if (isset($_SESSION["owner_id"]) && $_SESSION["owner_id"] > 0) {
+    try {
+        if (!function_exists('getDBConnection')) {
+            require_once(__DIR__ . '/include/db_config.php');
+        }
+        $db = getDBConnection();
+        $stmt = $db->prepare("SELECT subscription_expires_at, status FROM owners WHERE id = :id");
+        $stmt->execute([':id' => $_SESSION["owner_id"]]);
+        $ownerCheck = $stmt->fetch();
+        
+        if ($ownerCheck) {
+            $isExpired = false;
+            if ($ownerCheck['subscription_expires_at'] && strtotime($ownerCheck['subscription_expires_at']) < time()) {
+                $isExpired = true;
+            }
+            
+            if ($isExpired || $ownerCheck['status'] !== 'active') {
+                if ($_GET['id'] !== 'logout') {
+                    // Redirect to standalone billing page (keep session active for checkout authentication)
+                    echo "<script>alert('Masa aktif langganan Anda telah berakhir. Silakan lakukan pembayaran.'); window.location='/owner/subscription';</script>";
+                    exit;
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        // Ignore DB connection errors to avoid breaking the script
+    }
+}
+
 ob_start("ob_gzhandler");
 
 // check url
@@ -73,7 +131,7 @@ if ($id == "login" || substr($url, -1) == "p") {
   if (isset($_POST['login'])) {
     $user = $_POST['user'];
     $pass = $_POST['pass'];
-    if ($user == $useradm && $pass == decrypt($passadm)) {
+    if ($user == $useradm && $pass == mikhmon_decrypt($passadm)) {
       $_SESSION["mikhmon"] = $user;
       $_SESSION["owner_id"] = 0; // Master Admin
       echo "<script>window.location='./admin.php?id=sessions'</script>";
@@ -84,16 +142,24 @@ if ($id == "login" || substr($url, -1) == "p") {
               require_once(__DIR__ . '/include/db_config.php');
           }
           $db = getDBConnection();
-          $stmt = $db->prepare("SELECT * FROM owners WHERE username = :user OR email = :user OR phone = :user");
-          $stmt->execute([':user' => $user]);
+          $stmt = $db->prepare("SELECT * FROM owners WHERE username = :username OR email = :email OR phone = :phone");
+          $stmt->execute([':username' => $user, ':email' => $user, ':phone' => $user]);
           $owner = $stmt->fetch();
           if ($owner && password_verify($pass, $owner['password'])) {
-              if ($owner['status'] !== 'active') {
-                  $error = '<div style="width: 100%; padding:5px 0px 5px 0px; border-radius:5px;" class="bg-danger"><i class="fa fa-ban"></i> Alert!<br>Akun Owner belum aktif. Silakan selesaikan pembayaran.</div>';
+              // Establish session first so the billing controller can authenticate them
+              $_SESSION["mikhmon"] = $owner['username'];
+              $_SESSION["owner_id"] = $owner['id'];
+              $_SESSION["owner_level"] = $owner['level'];
+
+              $isExpired = false;
+              if ($owner['subscription_expires_at'] && strtotime($owner['subscription_expires_at']) < time()) {
+                  $isExpired = true;
+              }
+
+              if ($owner['status'] !== 'active' || $isExpired) {
+                  echo "<script>alert('Akun Anda belum aktif atau masa aktif langganan telah berakhir. Silakan lakukan pembayaran.'); window.location='/owner/subscription';</script>";
+                  exit;
               } else {
-                  $_SESSION["mikhmon"] = $owner['username'];
-                  $_SESSION["owner_id"] = $owner['id'];
-                  $_SESSION["owner_level"] = $owner['level'];
                   echo "<script>window.location='./admin.php?id=sessions'</script>";
               }
           } else {
@@ -140,7 +206,7 @@ if ($id == "login" || substr($url, -1) == "p") {
   include_once('./include/menu.php');
   $API = new RouterosAPI();
   $API->debug = false;
-  if ($API->connect($iphost, $userhost, decrypt($passwdhost))){
+  if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))){
     $_SESSION["connect"] = "<b class='text-green'>Connected</b>";
     echo "<script>window.location='./?session=" . $session . "'</script>";
   } else {

@@ -34,7 +34,7 @@ class MikrotikService
 
         $api = new RouterosAPI();
         $api->debug = false;
-        if (!$api->connect($this->ipHost, $this->userHost, decrypt($this->passHost))) {
+        if (!$api->connect($this->ipHost, $this->userHost, mikhmon_decrypt($this->passHost))) {
             throw new RuntimeException('Failed to connect to MikroTik router');
         }
 

@@ -39,7 +39,7 @@ if (!isset($_SESSION["mikhmon"])) {
 	include_once('../lib/formatbytesbites.php');
 	$API = new RouterosAPI();
 	$API->debug = false;
-	$API->connect($iphost, $userhost, decrypt($passwdhost));
+	$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost));
 
 	if ($serveractive != "") {
 		$gethotspotactive = $API->comm("/ip/hotspot/active/print", array("?server" => "" . $serveractive . ""));

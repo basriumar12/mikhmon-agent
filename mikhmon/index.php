@@ -18,6 +18,26 @@
 session_start();
 // hide all error
 error_reporting(0);
+
+// Bootstrap Laravel to enable SSO (only if not already running inside Laravel)
+if (!function_exists('app')) {
+    try {
+        if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+            require_once __DIR__ . '/../vendor/autoload.php';
+            $app = require_once __DIR__ . '/../bootstrap/app.php';
+            $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+            $ssoRequest = Illuminate\Http\Request::create('/owner', 'GET', [], $_COOKIE, [], $_SERVER);
+            $kernel->handle($ssoRequest);
+            
+            // Restore error and exception handlers to avoid strict Laravel error handling in legacy script
+            restore_error_handler();
+            restore_exception_handler();
+        }
+    } catch (\Exception $e) {
+        // Ignore bootstrapping errors
+    }
+}
+
 // check url
 
 ob_start("ob_gzhandler");
@@ -28,6 +48,15 @@ $url = $_SERVER['REQUEST_URI'];
 // load session MikroTik
 
 $session = $_GET['session'];
+
+// Automatically log in from Laravel session if authenticated
+if (!isset($_SESSION["mikhmon"]) && function_exists('auth') && auth('owners')->check()) {
+    $owner = auth('owners')->user();
+    $_SESSION["mikhmon"] = $owner->username;
+    $_SESSION["owner_id"] = $owner->id;
+    $_SESSION["owner_level"] = $owner->level;
+    $_SESSION["timezone"] = $owner->timezone ?? 'Asia/Jakarta';
+}
 
 if (!isset($_SESSION["mikhmon"])) {
   include_once('./public/landing.php');
@@ -70,10 +99,14 @@ if (!isset($_SESSION["mikhmon"])) {
   include_once('./lib/formatbytesbites.php');
   $API = new RouterosAPI();
   $API->debug = false;
-  $API->connect($iphost, $userhost, decrypt($passwdhost));
-
-  $getidentity = $API->comm("/system/identity/print");
-  $identity = $getidentity[0]['name'];
+  
+  if ($session === 'global') {
+      $identity = "SaaS Admin / Global Dashboard";
+  } else {
+      $API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost));
+      $getidentity = $API->comm("/system/identity/print");
+      $identity = $getidentity[0]['name'];
+  }
   
 
 // get variable
@@ -144,7 +177,7 @@ if (!isset($_SESSION["mikhmon"])) {
     echo "<script>window.location='./admin.php?id=login'</script>";
   }
 // redirect to home
-  elseif (substr(explode("=", $url)[0],-9) == "/?session") {
+  elseif (empty($hotspot) && empty($report) && empty($sys) && empty($ppp) && empty($hotspotuser) && substr(explode("=", $url)[0],-9) == "/?session") {
 
     include_once('./dashboard/home.php');
     $_SESSION['ubn'] = "";

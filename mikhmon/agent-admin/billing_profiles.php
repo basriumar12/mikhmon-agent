@@ -39,7 +39,7 @@ if ($sessionName) {
     if ($iphost && $userhost && $passwdhost) {
         $API = new RouterosAPI();
         $API->debug = false;
-        if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+        if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
             try {
                 $rawPppProfiles = $API->comm('/ppp/profile/print');
                 if (is_array($rawPppProfiles)) {

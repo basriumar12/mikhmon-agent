@@ -45,7 +45,7 @@ include_once('../lib/routeros_api.class.php');
 include_once('../lib/formatbytesbites.php');
 $API = new RouterosAPI();
 $API->debug = false;
-$API->connect($iphost, $userhost, decrypt($passwdhost));
+$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost));
 	// get quick print
 $getquickprint = $API->comm("/system/script/print", array("?name" => "$quickprint"));
 

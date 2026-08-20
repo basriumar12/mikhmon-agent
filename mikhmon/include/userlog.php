@@ -28,7 +28,7 @@ if (!isset($_SESSION["mikhmon"])) {
 
 
 	if (strlen($idhr) > "0") {
-		if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+		if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
 			$API->write('/system/script/print', false);
 			$API->write('?=source=' . $idhr . '');
 			$ARRAY = $API->read();
@@ -38,7 +38,7 @@ if (!isset($_SESSION["mikhmon"])) {
 		$shf = "hidden";
 		$shd = "text";
 	} elseif (strlen($idbl) > "0") {
-		if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+		if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
 			$API->write('/system/script/print', false);
 			$API->write('?=owner=' . $idbl . '');
 			$ARRAY = $API->read();
@@ -48,7 +48,7 @@ if (!isset($_SESSION["mikhmon"])) {
 		$shf = "hidden";
 		$shd = "text";
 	} elseif ($idhr == "" || $idbl == "") {
-		if ($API->connect($iphost, $userhost, decrypt($passwdhost))) {
+		if ($API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
 			$API->write('/system/script/print', false);
 			$API->write('?=comment=mikhmon');
 			$ARRAY = $API->read();

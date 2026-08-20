@@ -796,7 +796,7 @@ function sendTelegramPriceList($chatId) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ Gagal terhubung ke server.\n\nSilakan coba lagi nanti.");
         return;
     }
@@ -980,7 +980,7 @@ function purchaseTelegramVoucher($chatId, $profileName, $isAdmin) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ Gagal terhubung ke server.\n\nSilakan coba lagi nanti.");
         return;
     }
@@ -1384,7 +1384,7 @@ function getTelegramCachedPackages($forceRefresh = false) {
         $API = new RouterosAPI();
         $API->debug = false;
         
-        if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+        if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
             $API->disconnect();
             return [];
         }

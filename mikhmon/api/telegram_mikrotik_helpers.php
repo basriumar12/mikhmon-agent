@@ -47,7 +47,7 @@ function checkTelegramMikroTikStatus($chatId) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -117,7 +117,7 @@ function checkTelegramMikroTikResource($chatId) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -208,7 +208,7 @@ function checkTelegramPPPoEActive($chatId) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -286,7 +286,7 @@ function checkTelegramMikroTikPing($chatId) {
     $API->debug = false;
     
     $startTime = microtime(true);
-    $connected = $API->connect($iphost, $userhost, decrypt($passwdhost));
+    $connected = $API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost));
     $endTime = microtime(true);
     
     if (!$connected) {
@@ -349,7 +349,7 @@ function checkTelegramPPPoEOffline($chatId) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -450,7 +450,7 @@ function addTelegramPPPoESecret($chatId, $username, $password, $profile) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -520,7 +520,7 @@ function editTelegramPPPoESecret($chatId, $username, $newProfile) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -606,7 +606,7 @@ function deleteTelegramPPPoESecret($chatId, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -666,7 +666,7 @@ function enableTelegramPPPoESecret($chatId, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -736,7 +736,7 @@ function disableTelegramPPPoESecret($chatId, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -873,7 +873,7 @@ function enableTelegramHotspotUser($chatId, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }
@@ -944,7 +944,7 @@ function disableTelegramHotspotUser($chatId, $username) {
     $API = new RouterosAPI();
     $API->debug = false;
     
-    if (!$API->connect($iphost, $userhost, decrypt($passwdhost))) {
+    if (!$API->connect($iphost, $userhost, mikhmon_decrypt($passwdhost))) {
         sendTelegramMessage($chatId, "❌ *GAGAL TERHUBUNG*\n\nTidak dapat terhubung ke MikroTik.");
         return;
     }

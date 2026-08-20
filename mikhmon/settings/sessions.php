@@ -28,7 +28,7 @@ if (!isset($_SESSION["mikhmon"])) {
   if (isset($_POST['save'])) {
 
     $suseradm = ($_POST['useradm']);
-    $spassadm = encrypt($_POST['passadm']);
+    $spassadm = mikhmon_encrypt($_POST['passadm']);
     $logobt = ($_POST['logobt']);
     $qrbt = ($_POST['qrbt']);
 
@@ -70,6 +70,49 @@ if (!isset($_SESSION["mikhmon"])) {
   			<h3 class="card-title"><i class="fa fa-gear"></i> <?= $_admin_settings ?> &nbsp; | &nbsp;&nbsp;<i onclick="location.reload();" class="fa fa-refresh pointer " title="Reload data"></i></h3>
   		</div>
       <div class="card-body">
+        <?php
+        if (isset($_SESSION['owner_id']) && $_SESSION['owner_id'] > 0) {
+            try {
+                if (!function_exists('getDBConnection')) {
+                    require_once(__DIR__ . '/../include/db_config.php');
+                }
+                $db = getDBConnection();
+                $stmt = $db->prepare("SELECT level, subscription_expires_at FROM owners WHERE id = ?");
+                $stmt->execute([$_SESSION['owner_id']]);
+                $ownerInfo = $stmt->fetch();
+                if ($ownerInfo) {
+                    $levelName = strtoupper($ownerInfo['level']);
+                    $expiryStr = $ownerInfo['subscription_expires_at'] ? date('d M Y H:i', strtotime($ownerInfo['subscription_expires_at'])) : '-';
+                    $quotaMap = ['BRONZE' => 1, 'SILVER' => 2, 'GOLD' => 4, 'PLATINUM' => 8];
+                    $quotaNum = $quotaMap[$levelName] ?? 1;
+                    
+                    // Count active sessions
+                    $stmt = $db->prepare("SELECT COUNT(*) as total FROM router_sessions WHERE owner_id = ?");
+                    $stmt->execute([$_SESSION['owner_id']]);
+                    $sessionCount = $stmt->fetch()['total'] ?? 0;
+                    
+                    echo '
+                    <div style="background: #eef2ff; border-left: 4px solid #4f46e5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <h4 style="margin: 0 0 5px 0; color: #1e1b4b; font-weight: 700; font-size: 16px;"><i class="fa fa-credit-card"></i> Informasi Paket SaaS Anda</h4>
+                                <span style="font-size: 14px; color: #4338ca;">
+                                    <b>Paket Terdaftar:</b> <span class="badge" style="background:#4f46e5;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">'.$levelName.'</span> &nbsp;|&nbsp; 
+                                    <b>Masa Aktif s/d:</b> <span style="font-weight:600;">'.$expiryStr.'</span> &nbsp;|&nbsp; 
+                                    <b>Kuota Router:</b> <span style="font-weight:600;">'.$sessionCount.' / '.$quotaNum.' Router</span>
+                                </span>
+                            </div>
+                            <div>
+                                <a href="/owner/subscription" target="_blank" style="background: #4f46e5; color: white; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; text-decoration: none; display: inline-block; box-shadow: 0 2px 4px rgba(79,70,229,0.2);">
+                                    <i class="fa fa-refresh"></i> Upgrade / Perpanjang
+                                </a>
+                            </div>
+                        </div>
+                    </div>';
+                }
+            } catch (Exception $e) {}
+        }
+        ?>
         <div class="row">
           <div class="col-6">
             <div class="card">
@@ -79,10 +122,28 @@ if (!isset($_SESSION["mikhmon"])) {
             <div class="card-body">
             <div class="row">
               <?php
-              foreach (file('./include/config.php') as $line) {
-                $value = explode("'", $line)[1];
-                if ($value == "" || $value == "mikhmon") {
-                } else { ?>
+              $session_keys = [];
+              if (isset($_SESSION['owner_id']) && $_SESSION['owner_id'] > 0) {
+                  // Only display sessions from database config (already isolated in config.php)
+                  foreach ($data as $key => $val) {
+                      if ($key !== 'mikhmon') {
+                          $session_keys[] = $key;
+                      }
+                  }
+              } else {
+                  // Fallback for global admin: parse raw config file safely (only match actual array declarations)
+                  foreach (file('./include/config.php') as $line) {
+                      if (preg_match("/\\\$data\\[\\'([^\\']+)\\'\\]\\s*=\\s*array/", $line, $matches)) {
+                          $value = $matches[1];
+                          if ($value !== "mikhmon") {
+                              $session_keys[] = $value;
+                          }
+                      }
+                  }
+              }
+
+              foreach ($session_keys as $value) {
+              ?>
                     <div class="col-12">
                         <div class="box bmh-75 box-bordered <?= $color[rand(1, 11)]; ?>">
                                 <div class="box-group">
@@ -109,9 +170,8 @@ if (!isset($_SESSION["mikhmon"])) {
                             </div>
                           </div>
               <?php
-            }
-          }
-          ?>
+              }
+              ?>
               </div>
             </div>
           </div>
@@ -132,7 +192,7 @@ if (!isset($_SESSION["mikhmon"])) {
           <td>
           <div class="input-group">
           <div class="input-group-11 col-box-10">
-                <input class="group-item group-item-l" id="passadm" type="password" size="10" name="passadm" title="Password Admin" value="<?= decrypt($passadm); ?>" required="1"/>
+                <input class="group-item group-item-l" id="passadm" type="password" size="10" name="passadm" title="Password Admin" value="<?= mikhmon_decrypt($passadm); ?>" required="1"/>
               </div>
                 <div class="input-group-1 col-box-2">
                   <div class="group-item group-item-r pd-2p5 text-center align-middle">

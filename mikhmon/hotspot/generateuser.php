@@ -97,7 +97,7 @@ date_default_timezone_set($_SESSION['timezone']);
 		$_SESSION['ubp'] = $profile;
 		$commt = $user . "-" . rand(100, 999) . "-" . date("m.d.y") . "-" . $adcomment;
 		$gentemp = $commt . "|~" . $profile . "~" . $getvalid . "~" . $getprice . "!".$getsprice."~" . $timelimit . "~" . $datalimit . "~" . $getlock;
-		$gen = '<?php $genu="'.encrypt($gentemp).'";?>';
+		$gen = '<?php $genu="'.mikhmon_encrypt($gentemp).'";?>';
 		$temp = './voucher/temp.php';
 		$handle = fopen($temp, 'w') or die('Cannot open file:  ' . $temp);
 		$data = $gen;
@@ -232,8 +232,8 @@ date_default_timezone_set($_SESSION['timezone']);
 
 	$getprofile = $API->comm("/ip/hotspot/user/profile/print");
 	include_once('./voucher/temp.php');
-	$genuser = explode("-", decrypt($genu));
-	$genuser1 = explode("~", decrypt($genu));
+	$genuser = explode("-", mikhmon_decrypt($genu));
+	$genuser1 = explode("~", mikhmon_decrypt($genu));
 	$umode = $genuser[0];
 	$ucode = $genuser[1];
 	$udate = $genuser[2];
@@ -271,7 +271,7 @@ date_default_timezone_set($_SESSION['timezone']);
 	}
 	$ulock = $genuser1[6];
 	//$urlprint = "$umode-$ucode-$udate-$ucommt";
-	$urlprint = explode("|", decrypt($genu))[0];
+	$urlprint = explode("|", mikhmon_decrypt($genu))[0];
 	if ($currency == in_array($currency, $cekindo['indo'])) {
 		$uprice = $currency . " " . number_format((float)$uprice, 0, ",", ".");
 		$suprice = $currency . " " . number_format((float)$suprice, 0, ",", ".");
